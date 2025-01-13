@@ -34,7 +34,7 @@ model Memo {
 
   direction Direction @relation(fields: [directionId], references: [id])
   directionId Int
-  
+
   tipo String
   patente String
   periodo String
