@@ -41,12 +41,12 @@ export class ExcelService {
 
         const directionRes = await this.prisma.direction.upsert({
           where: { rut: row.rut },
-          update: { aclaratoria: row.aclaratoria },
+          update: { aclaratoria: row.aclaratoria.toString() },
           create: {
             rut: row.rut,
             calle: row.calle.toString(),
             numero: row.numero.toString(),
-            aclaratoria: row.aclaratoria,
+            aclaratoria: row.aclaratoria.toString(),
           }
         })
 
@@ -76,6 +76,10 @@ export class ExcelService {
 
   async find() {
     try {
+      await this.prisma.memo.deleteMany({})
+      await this.prisma.direction.deleteMany({})
+      await this.prisma.user.deleteMany({})
+
       const res = await this.prisma.user.findMany()
       return res
     } catch (error) {
