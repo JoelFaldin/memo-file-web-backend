@@ -41,12 +41,12 @@ export class ExcelService {
 
         const directionRes = await this.prisma.direction.upsert({
           where: { rut: row.rut },
-          update: { aclaratoria: row.aclaratoria.toString() },
+          update: { aclaratoria: row.aclaratoria ? row.aclaratoria.toString() : null },
           create: {
             rut: row.rut,
             calle: row.calle.toString(),
-            numero: row.numero.toString(),
-            aclaratoria: row.aclaratoria.toString(),
+            numero: row.numero ? row.numero.toString() : null,
+            aclaratoria: row.aclaratoria ? row.aclaratoria.toString() : null,
           }
         })
 

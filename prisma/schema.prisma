@@ -23,7 +23,7 @@ model Direction {
   rut String @unique
 
   calle String
-  numero String
+  numero String?
   aclaratoria String?
 }
 
