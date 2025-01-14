@@ -20,7 +20,7 @@ model User {
 model Direction {
   id Int @id @unique @default(autoincrement())
   calle String
-  numero String
+  numero String?
   aclaratoria String?
 
   Memo Memo[]
@@ -38,11 +38,11 @@ model Memo {
   tipo String
   patente String
   periodo String
-  capital BigInt
+  capital Decimal
   afecto Float
-  total BigInt
+  total Decimal
   emision Int
-  fecha_pago DateTime?
-  giro String?
+  fecha_pago DateTime
+  giro String
   agtp String?
 }
