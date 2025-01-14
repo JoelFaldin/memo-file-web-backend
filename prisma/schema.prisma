@@ -15,15 +15,16 @@ model User {
   nombre String
 
   Memo Memo[]
+  Direction Direction[]
 }
 
 model Direction {
-  id Int @id @unique @default(autoincrement())
-  calle String
-  numero String?
-  aclaratoria String?
+  user User @relation(fields: [rut], references: [rut])
+  rut String @unique
 
-  Memo Memo[]
+  calle String
+  numero String
+  aclaratoria String?
 }
 
 model Memo {
@@ -31,9 +32,6 @@ model Memo {
 
   user User @relation(fields: [rut], references: [rut])
   rut String
-
-  direction Direction @relation(fields: [directionId], references: [id])
-  directionId Int
 
   tipo String
   patente String

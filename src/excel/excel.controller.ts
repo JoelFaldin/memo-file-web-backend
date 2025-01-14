@@ -8,7 +8,7 @@ export class ExcelController {
   constructor(private readonly excelService: ExcelService) {}
 
   @Post()
-  @UseInterceptors(FileInterceptor('excelFile'))
+  @UseInterceptors(FileInterceptor('excel'))
   async create(@UploadedFile() file: Express.Multer.File) {
     return this.excelService.create(file);
   }
