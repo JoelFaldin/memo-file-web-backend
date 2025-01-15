@@ -33,13 +33,13 @@ export class ExcelService {
       const data = XLSX.utils.sheet_to_json(worksheet);
 
       data.forEach(async (row: RowInterface) => {
-        const usersRes = await this.prisma.user.upsert({
+        await this.prisma.user.upsert({
           where: { rut: row.rut },
           update: { nombre: row.nombre },
           create: { rut: row.rut, nombre: row.nombre },
         })
 
-        const directionRes = await this.prisma.direction.upsert({
+        await this.prisma.direction.upsert({
           where: { rut: row.rut },
           update: { aclaratoria: row.aclaratoria ? row.aclaratoria.toString() : null },
           create: {
@@ -49,10 +49,25 @@ export class ExcelService {
             aclaratoria: row.aclaratoria ? row.aclaratoria.toString() : null,
           }
         })
+      });
 
-        const memosRes = await this.prisma.memo.create({
-          data: {
-            id: randomUUID(),
+      const allMemos = data.map((row: RowInterface) => {
+        const date = row.fechaPago.toString();
+        const dateArray = date.split("");
+        const year = [...dateArray.slice(0, 4)];
+        const month = [...dateArray.slice(4, 6)];
+        const day = [...dateArray.slice(6, 8)];
+        const id = randomUUID();
+
+        return {
+          payTime: {
+            memoId: id,
+            year: parseInt(year.join("")),
+            month: parseInt(month.join("")),
+            day: parseInt(day.join(""))
+          },
+          memos: {
+            id,
             rut: row.rut,
             tipo: row.tipo,
             patente: row.patente,
@@ -61,29 +76,37 @@ export class ExcelService {
             afecto: row.afecto,
             total: row.total,
             emision: row.emision,
-            fecha_pago: new Date(row.fechaPago),
             giro: row.giro.toString(),
-            agtp: row.agtp.toString(),
+            agtp: row.agtp.toString()
           }
-        })
-      })
+        };
+      });
+      
+      await this.prisma.memo.createMany({
+        data: allMemos.map(memo => memo.memos)
+      });
 
-      return this.prisma.memo.findMany({})
+      await this.prisma.payTime.createMany({
+        data: allMemos.map(memo => memo.payTime)
+      });
+
+      return this.prisma.memo.findMany({});
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
   }
 
   async find() {
     try {
-      await this.prisma.memo.deleteMany({})
-      await this.prisma.direction.deleteMany({})
-      await this.prisma.user.deleteMany({})
+      await this.prisma.payTime.deleteMany({});
+      await this.prisma.memo.deleteMany({});
+      await this.prisma.direction.deleteMany({});
+      await this.prisma.user.deleteMany({});
 
-      const res = await this.prisma.user.findMany()
-      return res
+      const res = await this.prisma.user.findMany();
+      return res;
     } catch (error) {
-      console.log('Hubo un problema en el servidor, inténtelo más tarde. ', error)
+      console.log('Hubo un problema en el servidor, inténtelo más tarde. ', error);
     }
     
     return `This action returns all excel`;

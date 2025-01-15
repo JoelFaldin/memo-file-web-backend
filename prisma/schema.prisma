@@ -27,6 +27,15 @@ model Direction {
   aclaratoria String?
 }
 
+model PayTime {
+  memo Memo @relation(fields: [memoId], references: [id])
+  memoId String @unique
+
+  day Int
+  month Int
+  year Int
+}
+
 model Memo {
   id String @unique @id
 
@@ -40,7 +49,8 @@ model Memo {
   afecto Float
   total Decimal
   emision Int
-  fecha_pago DateTime
   giro String
   agtp String?
+
+  PayTime PayTime[]
 }
