@@ -1,56 +1,47 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  rut String @unique
-  nombre String
-
-  Memo Memo[]
-  Direction Direction[]
+model directions {
+  rut         String  @id @db.VarChar
+  calle       String  @db.VarChar(255)
+  numero      String? @db.VarChar(255)
+  aclaratoria String? @db.VarChar(255)
+  users       users   @relation(fields: [rut], references: [rut], onDelete: NoAction, onUpdate: NoAction)
 }
 
-model Direction {
-  user User @relation(fields: [rut], references: [rut])
-  rut String @unique
-
-  calle String
-  numero String?
-  aclaratoria String?
+model memos {
+  id        String     @id @db.VarChar(255)
+  rut       String?    @db.VarChar(255)
+  tipo      String?    @db.VarChar(255)
+  patente   String?    @db.VarChar(255)
+  periodo   String?    @db.VarChar(255)
+  capital   Decimal?   @db.Decimal
+  afecto    Float?
+  total     Decimal?   @db.Decimal
+  emision   Int?
+  giro      String?    @db.VarChar(255)
+  agtp      String?    @db.VarChar(255)
+  users     users?     @relation(fields: [rut], references: [rut], onDelete: NoAction, onUpdate: NoAction)
+  pay_times pay_times?
 }
 
-model PayTime {
-  memo Memo @relation(fields: [memoId], references: [id])
-  memoId String @unique
-
-  day Int
-  month Int
-  year Int
+model pay_times {
+  memo_id String @id @db.VarChar(255)
+  day     Int?
+  month   Int?
+  year    Int?
+  memos   memos  @relation(fields: [memo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-model Memo {
-  id String @unique @id
-
-  user User @relation(fields: [rut], references: [rut])
-  rut String
-
-  tipo String
-  patente String
-  periodo String
-  capital Decimal
-  afecto Float
-  total Decimal
-  emision Int
-  giro String
-  agtp String?
-
-  PayTime PayTime[]
+model users {
+  rut        String      @id @db.VarChar(255)
+  nombre     String      @db.VarChar(255)
+  directions directions?
+  memos      memos[]
 }

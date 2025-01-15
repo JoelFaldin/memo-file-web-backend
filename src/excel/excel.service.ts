@@ -33,13 +33,13 @@ export class ExcelService {
       const data = XLSX.utils.sheet_to_json(worksheet);
 
       data.forEach(async (row: RowInterface) => {
-        await this.prisma.user.upsert({
+        await this.prisma.users.upsert({
           where: { rut: row.rut },
           update: { nombre: row.nombre },
           create: { rut: row.rut, nombre: row.nombre },
         })
 
-        await this.prisma.direction.upsert({
+        await this.prisma.directions.upsert({
           where: { rut: row.rut },
           update: { aclaratoria: row.aclaratoria ? row.aclaratoria.toString() : null },
           create: {
@@ -61,13 +61,13 @@ export class ExcelService {
 
         return {
           payTime: {
-            memoId: id,
+            memo_id: id,
             year: parseInt(year.join("")),
             month: parseInt(month.join("")),
             day: parseInt(day.join(""))
           },
           memos: {
-            id,
+            id: id,
             rut: row.rut,
             tipo: row.tipo,
             patente: row.patente,
@@ -82,15 +82,15 @@ export class ExcelService {
         };
       });
       
-      await this.prisma.memo.createMany({
+      await this.prisma.memos.createMany({
         data: allMemos.map(memo => memo.memos)
       });
 
-      await this.prisma.payTime.createMany({
+      await this.prisma.pay_times.createMany({
         data: allMemos.map(memo => memo.payTime)
       });
 
-      return this.prisma.memo.findMany({});
+      return this.prisma.memos.findMany({});
     } catch (error) {
       console.log(error);
     }
@@ -98,12 +98,12 @@ export class ExcelService {
 
   async find() {
     try {
-      await this.prisma.payTime.deleteMany({});
-      await this.prisma.memo.deleteMany({});
-      await this.prisma.direction.deleteMany({});
-      await this.prisma.user.deleteMany({});
+      await this.prisma.pay_times.deleteMany({});
+      await this.prisma.memos.deleteMany({});
+      await this.prisma.directions.deleteMany({});
+      await this.prisma.users.deleteMany({});
 
-      const res = await this.prisma.user.findMany();
+      const res = await this.prisma.users.findMany();
       return res;
     } catch (error) {
       console.log('Hubo un problema en el servidor, inténtelo más tarde. ', error);
