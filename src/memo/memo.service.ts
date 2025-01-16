@@ -78,8 +78,21 @@ export class MemoService {
     return `This action returns all memo`;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} memo`;
+  async findOne(patente: string) {
+    try {
+      const findMemo = await this.prisma.memos.findMany({
+        where: {
+          patente: patente
+        }
+      })
+
+      return {
+        message: 'Memo encontrado!',
+        findMemo
+      }
+    } catch (error) {
+      console.log(error)
+    }
   }
 
   update(id: number, updateMemoDto: UpdateMemoDto) {
