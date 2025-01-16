@@ -32,7 +32,7 @@ export class ExcelService {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(worksheet);
 
-      data.forEach(async (row: RowInterface) => {
+      await Promise.all(data.map(async (row: RowInterface) => {
         await this.prisma.users.upsert({
           where: { rut: row.rut },
           update: { nombre: row.nombre },
@@ -49,7 +49,7 @@ export class ExcelService {
             aclaratoria: row.aclaratoria ? row.aclaratoria.toString() : null,
           }
         })
-      });
+      }));
 
       const allMemos = data.map((row: RowInterface) => {
         const date = row.fechaPago.toString();
