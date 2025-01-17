@@ -9,14 +9,14 @@ export class MemoController {
   constructor(private readonly memoService: MemoService) {}
 
   @Post('create')
-  async createOne(@Body() memo: CreateMemoDto) {
-    return this.memoService.createOne(memo);
+  async createMany(@Body() memo: CreateMemoDto) {
+    return this.memoService.createMany(memo);
   }
 
-  // @Get()
-  // findAll() {
-  //   return this.memoService.findAll();
-  // }
+  @Get('overall')
+  findAll() {
+    return this.memoService.getOverall();
+  }
 
   @Get(':id')
   findOne(@Param('id') id: string) {

@@ -9,7 +9,7 @@ import { PrismaService } from 'src/prisma.service';
 export class MemoService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createOne(createMemoDto: CreateMemoDto) {
+  async createMany(createMemoDto: CreateMemoDto) {
     const user = {
       rut: createMemoDto.rut,
       nombre: createMemoDto.nombre,
@@ -74,8 +74,37 @@ export class MemoService {
     return 1;
   }
 
-  findAll() {
-    return `This action returns all memo`;
+  async getOverall() {
+    try {
+      const memoCount = await this.prisma.memos.count();
+      const directionCount = await this.prisma.directions.count();
+      const payTimesCount = await this.prisma.pay_times.count();
+      const userCount = await this.prisma.users.count()
+
+      return {
+        response: 'ok',
+        totalCount: [
+          {
+            label: 'Memorándums',
+            count: memoCount,
+          },
+          {
+            label: 'Direcciones',
+            count: directionCount,
+          },
+          {
+            label: 'Fechas de pago',
+            count: payTimesCount,
+          },
+          {
+            label: 'Usuarios',
+            count: userCount
+          },
+        ]
+      }
+    } catch (error) {
+      console.log(error)
+    }
   }
 
   async findOne(patente: string) {
