@@ -120,10 +120,12 @@ export class MemoService {
         findMemo
       } : findMemo.length > 1 ? {
         message: 'Memos encontrado!',
-        findMemo
+        findMemo,
+        total: findMemo.length
       } : {
         message: 'Memo encontrado!',
-        findMemo
+        findMemo,
+        total: findMemo.length
       }
     } catch (error) {
       throw new HttpException(
