@@ -97,7 +97,7 @@ export class MemoService {
             count: payTimesCount,
           },
           {
-            label: 'Usuarios',
+            label: 'Usuarios únicos',
             count: userCount
           },
         ]
@@ -112,20 +112,34 @@ export class MemoService {
       const findMemo = await this.prisma.memos.findMany({
         where: {
           patente: patente
+        },
+        include: {
+          pay_times: true
         }
       })
 
-      return findMemo.length === 0 ? {
+      const joinedMemos = findMemo.map((memo) => {
+        const day = memo.pay_times.day
+        const month = memo.pay_times.month
+        const year = memo.pay_times.year
+
+        return {
+          ...memo,
+          pay_times: `${day}-${month}-${year}`
+        }
+      })
+
+      return joinedMemos.length === 0 ? {
         message: 'No se ha encontrado ningún memo con esta patente.',
-        findMemo
-      } : findMemo.length > 1 ? {
+        joinedMemos
+      } : joinedMemos.length > 1 ? {
         message: 'Memos encontrado!',
-        findMemo,
-        total: findMemo.length
+        joinedMemos,
+        total: joinedMemos.length
       } : {
         message: 'Memo encontrado!',
-        findMemo,
-        total: findMemo.length
+        joinedMemos,
+        total: joinedMemos.length
       }
     } catch (error) {
       throw new HttpException(
