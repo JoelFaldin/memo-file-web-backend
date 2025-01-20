@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
 import { CreateMemoDto } from './dto/create-memo.dto';
@@ -107,7 +107,7 @@ export class MemoService {
     }
   }
 
-  async findOne(patente: string) {
+  async findMany(patente: string) {
     try {
       const findMemo = await this.prisma.memos.findMany({
         where: {
@@ -115,12 +115,21 @@ export class MemoService {
         }
       })
 
-      return {
+      return findMemo.length === 0 ? {
+        message: 'No se ha encontrado ningún memo con esta patente.',
+        findMemo
+      } : findMemo.length > 1 ? {
+        message: 'Memos encontrado!',
+        findMemo
+      } : {
         message: 'Memo encontrado!',
         findMemo
       }
     } catch (error) {
-      console.log(error)
+      throw new HttpException(
+        error.response ?? 'Ha ocurrido un error, inténtelo más tarde.',
+        error.status ?? HttpStatus.INTERNAL_SERVER_ERROR
+      )
     }
   }
 

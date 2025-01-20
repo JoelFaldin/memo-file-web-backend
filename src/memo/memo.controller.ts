@@ -20,7 +20,7 @@ export class MemoController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.memoService.findOne(id);
+    return this.memoService.findMany(id);
   }
 
   // @Patch(':id')
