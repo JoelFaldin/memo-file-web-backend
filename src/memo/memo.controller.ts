@@ -10,7 +10,7 @@ export class MemoController {
 
   @Post('create')
   async createMany(@Body() memo: CreateMemoDto) {
-    return this.memoService.createMany(memo);
+    return this.memoService.createMemo(memo);
   }
 
   @Get('overall')

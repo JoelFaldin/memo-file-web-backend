@@ -53,7 +53,7 @@ export class CreateMemoDto {
 
     @IsNumber()
     @IsNotEmpty()
-    fechaPagos: string;
+    fechaPagos: number;
 
     @IsString()
     @IsNotEmpty()
