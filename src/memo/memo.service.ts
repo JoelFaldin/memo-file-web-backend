@@ -113,7 +113,10 @@ export class MemoService {
         ]
       }
     } catch (error) {
-      console.log(error)
+      throw new HttpException(
+        error.response ?? 'Ha ocurrido un error, inténtelo más tarde.',
+        error.status ?? HttpStatus.INTERNAL_SERVER_ERROR
+      )
     }
   }
 
