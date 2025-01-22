@@ -39,7 +39,7 @@ export class MemoService {
       }
   
       const date = createMemoDto.fechaPagos.toString();
-      const dateArray = date.split("");
+      const dateArray = date.split("-");
       const year = [...dateArray.slice(0, 4)];
       const month = [...dateArray.slice(4, 6)];
       const day = [...dateArray.slice(6, 8)];
@@ -142,10 +142,11 @@ export class MemoService {
         }
       })
 
-      return joinedMemos.length === 0 ? {
-        message: 'No se ha encontrado ningún memo con esta patente.',
-        joinedMemos
-      } : joinedMemos.length > 1 ? {
+      if (joinedMemos.length === 0) {
+        throw new HttpException('No se ha encontrado ningún memo con esta patente.', HttpStatus.BAD_REQUEST)
+      }
+
+      return joinedMemos.length > 1 ? {
         message: 'Memos encontrado!',
         joinedMemos,
         total: joinedMemos.length
