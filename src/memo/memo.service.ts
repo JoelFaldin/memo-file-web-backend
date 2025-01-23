@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
-import { StringsService } from 'src/strings/strings/strings.service';
+import { StringsService } from 'src/strings/strings.service';
 import { CreateMemoDto } from './dto/create-memo.dto';
 import { UpdateMemoDto } from './dto/update-memo.dto';
 import { PrismaService } from 'src/prisma.service';
@@ -34,17 +34,7 @@ export class MemoService {
       }
   
       const date = createMemoDto.fechaPagos.toString();
-      const dateArray = date.split("-");
-      const year = [...dateArray.slice(0, 4)];
-      const month = [...dateArray.slice(4, 6)];
-      const day = [...dateArray.slice(6, 8)];
-  
-      const fechaPago = {
-        day: parseInt(day.join()),
-        month: parseInt(month.join()),
-        year: parseInt(year.join()),
-        memo_id: id
-      }
+      const { day, month, year } = this.stringService.separateDate(date);
   
       await this.prisma.users.upsert({
         where: { rut: createMemoDto.rut },
@@ -57,7 +47,12 @@ export class MemoService {
       })
   
       await this.prisma.pay_times.create({
-        data: fechaPago
+        data: {
+          day,
+          month,
+          year,
+          memo_id: id
+        }
       })
   
       return {

@@ -2,8 +2,8 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import * as XLSX from 'xlsx';
 
+import { StringsService } from 'src/strings/strings.service';
 import { PrismaService } from 'src/prisma.service';
-import { StringsService } from 'src/strings/strings/strings.service';
 
 interface RowInterface {
   tipo: string;
@@ -43,11 +43,7 @@ export class ExcelService {
       }));
 
       const allMemos = data.map((row: RowInterface) => {
-        const date = row.fechaPago.toString();
-        const dateArray = date.split("");
-        const year = [...dateArray.slice(0, 4)];
-        const month = [...dateArray.slice(4, 6)];
-        const day = [...dateArray.slice(6, 8)];
+        const { year, month, day } = this.stringService.separateDateNoDash(row.fechaPago);
         const id = randomUUID();
 
         return {
@@ -60,7 +56,7 @@ export class ExcelService {
           memos: {
             id: id,
             rut: row.rut,
-            direccion: `${this.stringService.removeLastWhiteSpaces(row.calle)} ${row.numero} ${row?.aclaratoria}`,
+            direccion: `${this.stringService.removeLastWhiteSpaces(row.calle)} ${row?.numero ? row.numero : ''} ${row?.aclaratoria ? row.aclaratoria : ''}`,
             tipo: row.tipo,
             patente: row.patente,
             periodo: row.periodo,

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 
-import { StringsService } from './strings/strings.service';
+import { StringsService } from './strings.service';
 
 @Module({
     controllers: [],
