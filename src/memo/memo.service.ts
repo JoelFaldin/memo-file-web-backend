@@ -96,11 +96,16 @@ export class MemoService {
     }
   }
 
-  async findMany(patente: string) {
+  async findMany(rol: string, rut: string, direction: string) {
     try {
       const findMemo = await this.prisma.memos.findMany({
         where: {
-          patente: patente
+          patente: rol || undefined,
+          rut: rut || undefined,
+          direccion: {
+            contains: direction || undefined,
+            mode: 'insensitive'
+          }  
         },
         include: {
           pay_times: true
@@ -118,8 +123,8 @@ export class MemoService {
         }
       })
 
-      if (joinedMemos.length === 0) {
-        throw new HttpException('No se ha encontrado ningún memo con esta patente.', HttpStatus.BAD_REQUEST)
+      if (joinedMemos.length === 0 && rol === '') {
+        throw new HttpException('No se ha encontrado ningún memo con los datos ingresados.', HttpStatus.BAD_REQUEST)
       }
 
       return joinedMemos.length > 1 ? {

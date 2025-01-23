@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 
 import { CreateMemoDto } from './dto/create-memo.dto';
 import { MemoService } from './memo.service';
@@ -18,9 +18,9 @@ export class MemoController {
     return this.memoService.getOverall();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.memoService.findMany(id);
+  @Get('find')
+  findOne(@Query('rol') rol: string, @Query('rut') rut: string, @Query('direction') direction: string) {
+    return this.memoService.findMany(rol, rut, direction);
   }
 
   // @Patch(':id')
