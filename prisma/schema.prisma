@@ -7,17 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model directions {
-  rut         String  @id @db.VarChar
-  calle       String  @db.VarChar(255)
-  numero      String? @db.VarChar(255)
-  aclaratoria String? @db.VarChar(255)
-  users       users   @relation(fields: [rut], references: [rut], onDelete: NoAction, onUpdate: NoAction)
-}
-
 model memos {
   id        String     @id @db.VarChar(255)
   rut       String?    @db.VarChar(255)
+  direccion String     @db.VarChar(255)
   tipo      String?    @db.VarChar(255)
   patente   String?    @db.VarChar(255)
   periodo   String?    @db.VarChar(255)
@@ -42,6 +35,5 @@ model pay_times {
 model users {
   rut        String      @id @db.VarChar(255)
   nombre     String      @db.VarChar(255)
-  directions directions?
   memos      memos[]
 }

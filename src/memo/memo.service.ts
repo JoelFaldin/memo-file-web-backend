@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
+import { removeLastWhiteSpaces } from 'src/shared/helpers/removeWhitespaces.helper';
 import { CreateMemoDto } from './dto/create-memo.dto';
 import { UpdateMemoDto } from './dto/update-memo.dto';
 import { PrismaService } from 'src/prisma.service';
@@ -16,17 +17,11 @@ export class MemoService {
         nombre: createMemoDto.nombre,
       }
   
-      const direction = {
-        rut: createMemoDto.rut,
-        calle: createMemoDto.calle,
-        numero: createMemoDto.numero,
-        aclaratoria: createMemoDto?.aclaratoria
-      }
-  
       const id = randomUUID()
       const memo = {
         id,
         rut: createMemoDto.rut,
+        direccion: `${removeLastWhiteSpaces(createMemoDto.calle)} ${createMemoDto.numero} ${createMemoDto?.aclaratoria}`,
         tipo: createMemoDto.tipo,
         patente: createMemoDto.patente,
         periodo: createMemoDto.periodo,
@@ -57,12 +52,6 @@ export class MemoService {
         create: user,
       })
   
-      await this.prisma.directions.upsert({
-        where: { rut: createMemoDto.rut },
-        update: { aclaratoria: createMemoDto.aclaratoria ? createMemoDto.aclaratoria.toString() : null },
-        create: direction
-      })
-  
       await this.prisma.memos.create({
         data: memo
       })
@@ -71,9 +60,7 @@ export class MemoService {
         data: fechaPago
       })
   
-  
       return {
-        response: 'ok',
         message: 'Memorándum creado con éxito!'
       }; 
     } catch (error) {
@@ -87,20 +74,14 @@ export class MemoService {
   async getOverall() {
     try {
       const memoCount = await this.prisma.memos.count();
-      const directionCount = await this.prisma.directions.count();
       const payTimesCount = await this.prisma.pay_times.count();
       const userCount = await this.prisma.users.count()
 
       return {
-        response: 'ok',
         totalCount: [
           {
             label: 'Memorándums',
             count: memoCount,
-          },
-          {
-            label: 'Direcciones',
-            count: directionCount,
           },
           {
             label: 'Fechas de pago',

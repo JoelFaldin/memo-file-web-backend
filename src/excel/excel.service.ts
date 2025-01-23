@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import * as XLSX from 'xlsx';
 
+import { removeLastWhiteSpaces } from 'src/shared/helpers/removeWhitespaces.helper';
 import { PrismaService } from 'src/prisma.service';
 
 interface RowInterface {
@@ -39,16 +40,6 @@ export class ExcelService {
           create: { rut: row.rut, nombre: row.nombre },
         })
 
-        await this.prisma.directions.upsert({
-          where: { rut: row.rut },
-          update: { aclaratoria: row.aclaratoria ? row.aclaratoria.toString() : null },
-          create: {
-            rut: row.rut,
-            calle: row.calle.toString(),
-            numero: row.numero ? row.numero.toString() : null,
-            aclaratoria: row.aclaratoria ? row.aclaratoria.toString() : null,
-          }
-        })
       }));
 
       const allMemos = data.map((row: RowInterface) => {
@@ -69,6 +60,7 @@ export class ExcelService {
           memos: {
             id: id,
             rut: row.rut,
+            direccion: `${removeLastWhiteSpaces(row.calle)} ${row.numero} ${row?.aclaratoria}`,
             tipo: row.tipo,
             patente: row.patente,
             periodo: row.periodo,
@@ -90,9 +82,15 @@ export class ExcelService {
         data: allMemos.map(memo => memo.payTime)
       });
 
-      return this.prisma.memos.findMany({});
+      return {
+        message: 'Excel subido correctamente.'
+      }
     } catch (error) {
-      console.log(error);
+      console.log(error)
+      throw new HttpException(
+        error.response ?? 'Hubo un problema en el servidor, inténtelo más tarde.',
+        error.status ?? HttpStatus.INTERNAL_SERVER_ERROR
+      )
     }
   }
 
@@ -100,7 +98,6 @@ export class ExcelService {
     try {
       await this.prisma.pay_times.deleteMany({});
       await this.prisma.memos.deleteMany({});
-      await this.prisma.directions.deleteMany({});
       await this.prisma.users.deleteMany({});
 
       const res = await this.prisma.users.findMany();
