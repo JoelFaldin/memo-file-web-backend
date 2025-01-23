@@ -2,8 +2,8 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import * as XLSX from 'xlsx';
 
-import { removeLastWhiteSpaces } from 'src/shared/helpers/removeWhitespaces.helper';
 import { PrismaService } from 'src/prisma.service';
+import { StringsService } from 'src/strings/strings/strings.service';
 
 interface RowInterface {
   tipo: string;
@@ -25,7 +25,7 @@ interface RowInterface {
 
 @Injectable()
 export class ExcelService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private stringService: StringsService) {}
 
   async create(file: Express.Multer.File) {
     try {
@@ -60,7 +60,7 @@ export class ExcelService {
           memos: {
             id: id,
             rut: row.rut,
-            direccion: `${removeLastWhiteSpaces(row.calle)} ${row.numero} ${row?.aclaratoria}`,
+            direccion: `${this.stringService.removeLastWhiteSpaces(row.calle)} ${row.numero} ${row?.aclaratoria}`,
             tipo: row.tipo,
             patente: row.patente,
             periodo: row.periodo,

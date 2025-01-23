@@ -1,14 +1,14 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
-import { removeLastWhiteSpaces } from 'src/shared/helpers/removeWhitespaces.helper';
+import { StringsService } from 'src/strings/strings/strings.service';
 import { CreateMemoDto } from './dto/create-memo.dto';
 import { UpdateMemoDto } from './dto/update-memo.dto';
 import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
 export class MemoService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private stringService: StringsService) {}
 
   async createMemo(createMemoDto: CreateMemoDto) {
     try {
@@ -21,7 +21,7 @@ export class MemoService {
       const memo = {
         id,
         rut: createMemoDto.rut,
-        direccion: `${removeLastWhiteSpaces(createMemoDto.calle)} ${createMemoDto.numero} ${createMemoDto?.aclaratoria}`,
+        direccion: `${this.stringService.removeLastWhiteSpaces(createMemoDto.calle)} ${createMemoDto.numero} ${createMemoDto?.aclaratoria}`,
         tipo: createMemoDto.tipo,
         patente: createMemoDto.patente,
         periodo: createMemoDto.periodo,
