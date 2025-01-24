@@ -19,8 +19,8 @@ export class MemoController {
   }
 
   @Get('find')
-  findOne(@Query('rol') rol: string, @Query('rut') rut: string, @Query('direction') direction: string) {
-    return this.memoService.findMany(rol, rut, direction);
+  findOne(@Query('rol') rol: string, @Query('rut') rut: string, @Query('direction') direction: string, @Query('page') page: number) {
+    return this.memoService.findMany(rol, rut, direction, page);
   }
 
   // @Patch(':id')

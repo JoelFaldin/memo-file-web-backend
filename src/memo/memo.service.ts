@@ -96,7 +96,7 @@ export class MemoService {
     }
   }
 
-  async findMany(rol: string, rut: string, direction: string) {
+  async findMany(rol: string, rut: string, direction: string, page: number) {
     try {
       const findMemo = await this.prisma.memos.findMany({
         where: {
@@ -109,8 +109,21 @@ export class MemoService {
         },
         include: {
           pay_times: true
-        }
+        },
+        take: 10,
+        skip: 10 * (page - 1),
       })
+
+      const memoCount = await this.prisma.memos.count({
+        where: {
+          patente: rol || undefined,
+          rut: rut || undefined,
+          direccion: {
+            contains: direction || undefined,
+            mode: 'insensitive'
+          }  
+        }
+      });
 
       const joinedMemos = findMemo.map((memo) => {
         const day = memo.pay_times.day
@@ -130,11 +143,13 @@ export class MemoService {
       return joinedMemos.length > 1 ? {
         message: 'Memos encontrado!',
         joinedMemos,
-        total: joinedMemos.length
+        total: joinedMemos.length,
+        nextPage: ((page * 10) - memoCount) < 0
       } : {
         message: 'Memo encontrado!',
         joinedMemos,
-        total: joinedMemos.length
+        total: joinedMemos.length,
+        nextPage: false
       }
     } catch (error) {
       throw new HttpException(
