@@ -125,30 +125,19 @@ export class MemoService {
         }
       });
 
-      const joinedMemos = findMemo.map((memo) => {
-        const day = memo.pay_times.day
-        const month = memo.pay_times.month
-        const year = memo.pay_times.year
-
-        return {
-          ...memo,
-          pay_times: `${day}-${month}-${year}`
-        }
-      })
-
-      if (joinedMemos.length === 0 && rol === '') {
+      if (findMemo.length === 0 && rol === '') {
         throw new HttpException('No se ha encontrado ningún memo con los datos ingresados.', HttpStatus.BAD_REQUEST)
       }
 
-      return joinedMemos.length > 1 ? {
+      return findMemo.length > 1 ? {
         message: 'Memos encontrado!',
-        joinedMemos,
-        total: joinedMemos.length,
+        findMemo,
+        total: findMemo.length,
         nextPage: ((page * 10) - memoCount) < 0
       } : {
         message: 'Memo encontrado!',
-        joinedMemos,
-        total: joinedMemos.length,
+        findMemo,
+        total: findMemo.length,
         nextPage: false
       }
     } catch (error) {

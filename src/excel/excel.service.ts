@@ -64,7 +64,7 @@ export class ExcelService {
             afecto: row.afecto,
             total: row.total,
             emision: row.emision,
-            giro: row.giro.toString(),
+            giro: `${this.stringService.removeLastWhiteSpaces(row.giro.toString())}`,
             agtp: row.agtp.toString()
           }
         };
