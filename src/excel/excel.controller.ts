@@ -1,5 +1,7 @@
-import { Controller, Get, Post, UseInterceptors, UploadedFile, Body } from '@nestjs/common';
+import { Controller, Get, Post, UseInterceptors, UploadedFile, StreamableFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { createReadStream } from 'node:fs';
+import { join } from 'node:path';
 
 import { ExcelService } from './excel.service';
 
@@ -14,7 +16,11 @@ export class ExcelController {
   }
 
   @Get()
-  find() {
-    return this.excelService.find();
+  getTemplate(): StreamableFile {
+    const file = createReadStream(join(process.cwd(), './public/excel_template.xlsx'));
+    return new StreamableFile(file, {
+      type: 'application/octet-stream',
+      disposition: 'attachment; filename="excel_template.xlsx"',
+    });
   }
 }

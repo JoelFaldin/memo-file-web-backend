@@ -89,19 +89,4 @@ export class ExcelService {
       )
     }
   }
-
-  async find() {
-    try {
-      await this.prisma.pay_times.deleteMany({});
-      await this.prisma.memos.deleteMany({});
-      await this.prisma.users.deleteMany({});
-
-      const res = await this.prisma.users.findMany();
-      return res;
-    } catch (error) {
-      console.log('Hubo un problema en el servidor, inténtelo más tarde. ', error);
-    }
-    
-    return `This action returns all excel`;
-  }
 }

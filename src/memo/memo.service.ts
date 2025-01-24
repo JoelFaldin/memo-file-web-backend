@@ -129,16 +129,20 @@ export class MemoService {
         throw new HttpException('No se ha encontrado ningún memo con los datos ingresados.', HttpStatus.BAD_REQUEST)
       }
 
+      const totalPages = Math.ceil(memoCount / 10);
+
       return findMemo.length > 1 ? {
         message: 'Memos encontrado!',
         findMemo,
         total: findMemo.length,
-        nextPage: ((page * 10) - memoCount) < 0
+        nextPage: ((page * 10) - memoCount) < 0,
+        totalPages
       } : {
         message: 'Memo encontrado!',
         findMemo,
         total: findMemo.length,
-        nextPage: false
+        nextPage: false,
+        totalPages
       }
     } catch (error) {
       throw new HttpException(
