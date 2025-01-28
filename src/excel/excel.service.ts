@@ -21,6 +21,8 @@ interface RowInterface {
   fechaPago: string;
   giro: string;
   agtp?: string
+  rutRepresentante?: string,
+  nombreRepresentante?: string
 }
 
 @Injectable()
@@ -34,17 +36,39 @@ export class ExcelService {
       const data = XLSX.utils.sheet_to_json(worksheet);
 
       await Promise.all(data.map(async (row: RowInterface) => {
-        await this.prisma.users.upsert({
-          where: { rut: row.rut },
-          update: { nombre: row.nombre },
-          create: { rut: row.rut, nombre: row.nombre },
+        await this.prisma.locales.upsert({
+          where: { rut_local: row.rut },
+          update: { nombre_local: row.nombre },
+          create: { rut_local: row.rut, nombre_local: row.nombre },
         })
-
       }));
 
-      const allMemos = data.map((row: RowInterface) => {
+      const allMemos = await Promise.all(data.map(async (row: RowInterface) => {
         const { year, month, day } = this.stringService.separateDateNoDash(row.fechaPago);
         const id = randomUUID();
+
+        const currentMemo = await this.prisma.memos.findFirst({
+          where: { patente: row.patente },
+          select: { representantes: true }
+        })
+
+        const newRepresentant = {
+          rut_representante: row.rutRepresentante ?? currentMemo?.representantes.rut_representante,
+          nombre_representante: row.nombreRepresentante ?? currentMemo?.representantes.nombre_representante,
+        }
+
+        await this.prisma.representantes.upsert({
+          where: { patente: row.patente },
+          update: {
+            rut_representante: newRepresentant.rut_representante,
+            nombre_representante: newRepresentant.nombre_representante,
+          },
+          create: {
+            patente: row.patente,
+            rut_representante: newRepresentant.rut_representante,
+            nombre_representante: newRepresentant.nombre_representante,
+          },
+        })
 
         return {
           payTime: {
@@ -56,7 +80,7 @@ export class ExcelService {
           memos: {
             id: id,
             rut: row.rut,
-            direccion: `${this.stringService.removeLastWhiteSpaces(row.calle)} ${row?.numero ? row.numero : ''} ${row?.aclaratoria ? row.aclaratoria : ''}`,
+            direccion: `${this.stringService.removeLastWhiteSpaces(row.calle.toString())} ${row?.numero ? row.numero : ''} ${row?.aclaratoria ? row.aclaratoria : ''}`,
             tipo: row.tipo,
             patente: row.patente,
             periodo: row.periodo,
@@ -68,8 +92,8 @@ export class ExcelService {
             agtp: row.agtp.toString()
           }
         };
-      });
-      
+      }));
+
       await this.prisma.memos.createMany({
         data: allMemos.map(memo => memo.memos)
       });

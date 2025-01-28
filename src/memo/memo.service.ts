@@ -12,9 +12,9 @@ export class MemoService {
 
   async createMemo(createMemoDto: CreateMemoDto) {
     try {
-      const user = {
-        rut: createMemoDto.rut,
-        nombre: createMemoDto.nombre,
+      const local = {
+        rut_local: createMemoDto.rut,
+        nombre_local: createMemoDto.nombre,
       }
   
       const id = randomUUID()
@@ -36,10 +36,10 @@ export class MemoService {
       const date = createMemoDto.fechaPagos.toString();
       const { day, month, year } = this.stringService.separateDate(date);
   
-      await this.prisma.users.upsert({
-        where: { rut: createMemoDto.rut },
-        update: { nombre: createMemoDto.nombre },
-        create: user,
+      await this.prisma.locales.upsert({
+        where: { rut_local: createMemoDto.rut },
+        update: { nombre_local: createMemoDto.nombre },
+        create: local,
       })
   
       await this.prisma.memos.create({
@@ -70,7 +70,8 @@ export class MemoService {
     try {
       const memoCount = await this.prisma.memos.count();
       const payTimesCount = await this.prisma.pay_times.count();
-      const userCount = await this.prisma.users.count()
+      const localsCount = await this.prisma.locales.count();
+      const representantsCount = await this.prisma.representantes.count();
 
       return {
         totalCount: [
@@ -83,9 +84,13 @@ export class MemoService {
             count: payTimesCount,
           },
           {
-            label: 'Usuarios únicos',
-            count: userCount
+            label: 'Locales únicos',
+            count: localsCount
           },
+          {
+            label: 'Representantes únicos',
+            count: representantsCount 
+          }
         ]
       }
     } catch (error) {

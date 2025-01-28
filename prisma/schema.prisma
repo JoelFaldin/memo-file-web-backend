@@ -8,20 +8,22 @@ datasource db {
 }
 
 model memos {
-  id        String     @id @db.VarChar(255)
-  rut       String?    @db.VarChar(255)
-  direccion String     @db.VarChar(255)
-  tipo      String?    @db.VarChar(255)
-  patente   String?    @db.VarChar(255)
-  periodo   String?    @db.VarChar(255)
-  capital   Decimal?   @db.Decimal
-  afecto    Float?
-  total     Decimal?   @db.Decimal
-  emision   Int?
-  giro      String?    @db.VarChar(255)
-  agtp      String?    @db.VarChar(255)
-  users     users?     @relation(fields: [rut], references: [rut], onDelete: NoAction, onUpdate: NoAction)
-  pay_times pay_times?
+  id              String          @id @db.VarChar(255)
+  rut             String?         @db.VarChar(255)
+  direccion       String          @db.VarChar(255)
+  tipo            String?         @db.VarChar(255)
+  patente         String?         @db.VarChar(255)
+  periodo         String?         @db.VarChar(255)
+  capital         Decimal?        @db.Decimal
+  afecto          Float?
+  total           Decimal?        @db.Decimal
+  emision         Int?
+  giro            String?         @db.VarChar(255)
+  agtp            String?         @db.VarChar(255)
+  rut_local       String?
+  locales         locales?        @relation(fields: [rut_local], references: [rut_local], onDelete: NoAction, onUpdate: NoAction)
+  pay_times       pay_times?
+  representantes  representantes? @relation(fields: [patente], references: [patente], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model pay_times {
@@ -32,8 +34,15 @@ model pay_times {
   memos   memos  @relation(fields: [memo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-model users {
-  rut        String      @id @db.VarChar(255)
-  nombre     String      @db.VarChar(255)
-  memos      memos[]
+model locales {
+  rut_local        String      @id @db.VarChar(255)
+  nombre_local     String      @db.VarChar(255)
+  memos            memos[]
+}
+
+model representantes {
+  patente               String      @id @db.VarChar(255)
+  rut_representante     String?     @db.VarChar(255)
+  nombre_representante  String?
+  memos                 memos[]
 }
