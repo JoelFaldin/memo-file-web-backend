@@ -113,7 +113,8 @@ export class MemoService {
           }  
         },
         include: {
-          pay_times: true
+          pay_times: true,
+          representantes: true
         },
         take: 10,
         skip: 10 * (page - 1),
