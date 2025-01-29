@@ -3,22 +3,17 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class StringsService {
     removeLastWhiteSpaces(dir: string | undefined): string {
-        if (typeof dir === undefined) {
+        if (dir === undefined) {
             return dir;
         }
         
-        const newDir = dir.split('').reverse();
-        const direction = [dir.split('')];
-    
-        for(let i = 0; i < newDir.length; i++) {
-            if (newDir[i] === ' ') {
-                direction[0].pop();
-            } else {
-                break;
-            }
+        let newDir = dir;
+
+        while(newDir.endsWith(' ')) {
+            newDir = newDir.slice(0, -1);
         }
-    
-        return direction[0].join('');
+
+        return newDir;
     }
 
     separateDate(date: string) {
