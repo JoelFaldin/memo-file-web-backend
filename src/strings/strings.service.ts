@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class StringsService {
-    removeLastWhiteSpaces(dir: string): string {
+    removeLastWhiteSpaces(dir: string | undefined): string {
+        if (typeof dir === undefined) {
+            return dir;
+        }
+        
         const newDir = dir.split('').reverse();
         const direction = [dir.split('')];
     

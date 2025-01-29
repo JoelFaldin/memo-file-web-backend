@@ -23,7 +23,7 @@ model memos {
   rut_local       String?
   locales         locales?        @relation(fields: [rut_local], references: [rut_local], onDelete: NoAction, onUpdate: NoAction)
   pay_times       pay_times?
-  representantes  representantes? @relation(fields: [patente], references: [patente], onDelete: NoAction, onUpdate: NoAction)
+  representantes  representantes? @relation(fields: [id], references: [representante_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model pay_times {
@@ -41,7 +41,8 @@ model locales {
 }
 
 model representantes {
-  patente               String      @id @db.VarChar(255)
+  representante_id      String      @id @db.VarChar(255)
+  patente               String      @db.VarChar(255)
   rut_representante     String?     @db.VarChar(255)
   nombre_representante  String?
   memos                 memos[]

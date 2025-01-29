@@ -38,8 +38,11 @@ export class ExcelService {
       await Promise.all(data.map(async (row: RowInterface) => {
         await this.prisma.locales.upsert({
           where: { rut_local: row.rut },
-          update: { nombre_local: row.nombre },
-          create: { rut_local: row.rut, nombre_local: row.nombre },
+          update: {nombre_local: this.stringService.removeLastWhiteSpaces(row.nombre.toString()) },
+          create: {
+            rut_local: row.rut,
+            nombre_local: this.stringService.removeLastWhiteSpaces(row.nombre.toString())
+          },
         })
       }));
 
@@ -53,24 +56,17 @@ export class ExcelService {
         })
 
         const newRepresentant = {
+          id_representante: currentMemo?.representantes.representante_id ?? randomUUID(),
           rut_representante: row.rutRepresentante ?? currentMemo?.representantes.rut_representante,
           nombre_representante: row.nombreRepresentante ?? currentMemo?.representantes.nombre_representante,
         }
 
-        await this.prisma.representantes.upsert({
-          where: { patente: row.patente },
-          update: {
-            rut_representante: newRepresentant.rut_representante,
-            nombre_representante: newRepresentant.nombre_representante,
-          },
-          create: {
-            patente: row.patente,
-            rut_representante: newRepresentant.rut_representante,
-            nombre_representante: newRepresentant.nombre_representante,
-          },
-        })
-
         return {
+          representants: {
+            representante_id: id,
+            rut_representante: newRepresentant.rut_representante,
+            nombre_representante: newRepresentant.nombre_representante
+          },
           payTime: {
             memo_id: id,
             year: parseInt(year.join("")),
@@ -93,6 +89,51 @@ export class ExcelService {
           }
         };
       }));
+
+      const allPatentes = allMemos.map(memo => memo.memos.patente);
+
+      const allExistingPatentes = await this.prisma.representantes.findMany({
+        where: {
+          patente: {
+            in: allPatentes
+          }
+        },
+        select: { patente: true },
+      });
+
+      const uniqueExistingPatentes = new Set(allExistingPatentes.map(p => p.patente));
+      const update = [];
+      const create = [];
+
+      allMemos.forEach(memo => {
+        if (uniqueExistingPatentes.has(memo.memos.patente)) {
+          update.push({
+            where: { id: memo.representants.representante_id },
+            data: {
+              rut_representante: memo.representants.rut_representante,
+              nombre_representante: memo.representants.nombre_representante,
+            }
+          })
+        } else {
+          create.push({
+            representante_id: memo.representants.representante_id,
+            patente: memo.memos.patente,
+            rut_representante: memo.representants.rut_representante,
+            nombre_representante: memo.representants.nombre_representante,  
+          })
+        }
+      })
+
+      await Promise.all([
+        update.length > 0 &&
+          this.prisma.representantes.updateMany({
+            data: update
+          }),
+          create.length > 0 &&
+            this.prisma.representantes.createMany({
+              data: create
+          })
+      ])
 
       await this.prisma.memos.createMany({
         data: allMemos.map(memo => memo.memos)
