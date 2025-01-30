@@ -35,38 +35,132 @@ export class ExcelService {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(worksheet);
 
-      await Promise.all(data.map(async (row: RowInterface) => {
-        await this.prisma.locales.upsert({
-          where: { rut_local: row.rut },
-          update: {nombre_local: this.stringService.removeLastWhiteSpaces(row.nombre.toString()) },
-          create: {
-            rut_local: row.rut,
-            nombre_local: this.stringService.removeLastWhiteSpaces(row.nombre.toString())
+      // Procesando y guardando los representantes:
+      const allRepresentants = data.map((row: RowInterface) => {
+        return {
+          patente: row.patente,
+          rut: row.rutRepresentante,
+          nombre: row.nombreRepresentante
+        }
+      });
+
+      const existingRepresentants = await this.prisma.representantes.findMany({
+        where: {
+          rut_representante: {
+            in: allRepresentants.map(rep => rep.rut ?? "")
+          }
+        },
+      });
+
+      const uniqueExistingRepresentants = new Set(existingRepresentants.map(representant => representant.rut_representante));
+      const createRepresentants = [];
+
+      data.forEach((row: RowInterface) => {
+        if (uniqueExistingRepresentants.has(row.rutRepresentante)) {
+          return;
+        } else if (row.rutRepresentante && row.nombreRepresentante) {
+          createRepresentants.push({
+            representante_id: randomUUID(),
+            patente: row.patente,
+            rut_representante: row.rutRepresentante,
+            nombre_representante: row.nombreRepresentante
+          })
+        }
+      })
+
+      // await Promise.all([
+      //   updateRepresentants.length > 0 && updateRepresentants.map(async row => {
+      //     console.log('updating...');
+      //     await this.prisma.representantes.update(row);
+      //   })
+      // ])
+      
+      const batchesSize = 10000;
+      for (let i = 0; i < createRepresentants.length; i += batchesSize) {
+        const batch = createRepresentants.slice(i, i + batchesSize);
+        await this.prisma.representantes.createMany({
+          data: batch,
+          skipDuplicates: true
+        });
+      };
+
+      // Mapeando la id de cada representante creado junto a su rut:
+      const createdRepresentants = await this.prisma.representantes.findMany({
+        where: {
+          rut_representante: {
+            in: data.map((row: RowInterface) => row.rutRepresentante).filter((rut): rut is string => !!rut),
+          }
+        },
+        select: {
+          representante_id: true,
+          rut_representante: true
+        }
+      });
+
+      const mappedRepresentants = createdRepresentants.reduce((map, current) => {
+        map[current.rut_representante] = current.representante_id;
+        return map;
+      }, {})
+
+      // Procesando y guardando los locales:
+      const allLocalRuts = data.map((row: RowInterface) => row.rut).filter(rut => Boolean(rut));
+      const results = [];
+      for (let i = 0; i < allLocalRuts.length; i += batchesSize) {
+        const chunk = allLocalRuts.slice(i, i + batchesSize);
+
+        const existingLocals = await this.prisma.locales.findMany({
+          where: {
+            rut_local: {
+              in: Array.from(chunk.map(c => c.toString()))
+            },
           },
+          select: {
+            rut_local: true
+          },
+        });
+
+        results.push(...existingLocals)
+      }
+
+      const uniqueExistingLocalRuts = new Set(results.map(local => local.rut_local));
+      const createLocals = [];
+
+      data.forEach((row: RowInterface) => {
+        if (uniqueExistingLocalRuts.has(row.rut)) {
+          return
+        } else {
+          createLocals.push({
+            rut_local: row.rut ?? "",
+            nombre_local: this.stringService.removeLastWhiteSpaces(row.nombre),
+            id_representante: mappedRepresentants[row.rutRepresentante] ?? null
+          });
+        }
+      });
+
+      const specials = createLocals.filter(local => local.rut_local === '-');
+      await this.prisma.locales.createMany({
+        data: specials,
+        skipDuplicates: true
+      });
+
+      // updateLocals.length > 0 && updateLocals.map(async row => {
+      //   console.log('updating...');
+      //   await this.prisma.locales.update(row);
+      // })
+
+      for (let i = 0; i < createLocals.length; i += batchesSize) {
+        const batch = createLocals.slice(i, i + batchesSize);
+        await this.prisma.locales.createMany({
+          data: batch,
+          skipDuplicates: true
         })
-      }));
+      }
 
       const allMemos = await Promise.all(data.map(async (row: RowInterface) => {
         const { year, month, day } = this.stringService.separateDateNoDash(row.fechaPago);
         const id = randomUUID();
 
-        const currentMemo = await this.prisma.memos.findFirst({
-          where: { patente: row.patente },
-          select: { representantes: true }
-        })
-
-        const newRepresentant = {
-          id_representante: currentMemo?.representantes.representante_id ?? randomUUID(),
-          rut_representante: row.rutRepresentante ?? currentMemo?.representantes.rut_representante,
-          nombre_representante: row.nombreRepresentante ?? currentMemo?.representantes.nombre_representante,
-        }
-
         return {
-          representants: {
-            representante_id: id,
-            rut_representante: newRepresentant.rut_representante,
-            nombre_representante: newRepresentant.nombre_representante
-          },
           payTime: {
             memo_id: id,
             year: parseInt(year.join("")),
@@ -90,50 +184,26 @@ export class ExcelService {
         };
       }));
 
-      const allPatentes = allMemos.map(memo => memo.memos.patente);
+      // const seen = new Set();
+      // const uniqueData = [];
+      // const duplicates = [];
 
-      const allExistingPatentes = await this.prisma.representantes.findMany({
-        where: {
-          patente: {
-            in: allPatentes
-          }
-        },
-        select: { patente: true },
-      });
+      // allMemos.forEach(memo => {
+      //   const { patente, periodo, rut, direccion } = memo.memos;
+      //   const key = `${rut}-${patente}-${periodo}-${direccion}`;
 
-      const uniqueExistingPatentes = new Set(allExistingPatentes.map(p => p.patente));
-      const update = [];
-      const create = [];
+      //   if (seen.has(key)) {
+      //     duplicates.push(memo.memos);
+      //     console.log(`Duplicate found: rut: ${rut}, patente: ${patente}, periodo: ${periodo}, direccion: ${direccion}`);
+      //   } else {
+      //     seen.add(key);
+      //     uniqueData.push(memo.memos);
+      //   }
+      // })
 
-      allMemos.forEach(memo => {
-        if (uniqueExistingPatentes.has(memo.memos.patente)) {
-          update.push({
-            where: { id: memo.representants.representante_id },
-            data: {
-              rut_representante: memo.representants.rut_representante,
-              nombre_representante: memo.representants.nombre_representante,
-            }
-          })
-        } else {
-          create.push({
-            representante_id: memo.representants.representante_id,
-            patente: memo.memos.patente,
-            rut_representante: memo.representants.rut_representante,
-            nombre_representante: memo.representants.nombre_representante,  
-          })
-        }
-      })
-
-      await Promise.all([
-        update.length > 0 &&
-          this.prisma.representantes.updateMany({
-            data: update
-          }),
-          create.length > 0 &&
-            this.prisma.representantes.createMany({
-              data: create
-          })
-      ])
+      // if (duplicates.length > 0) {
+      //   console.log('Duplicate Entries:', duplicates);
+      // }
 
       await this.prisma.memos.createMany({
         data: allMemos.map(memo => memo.memos)
@@ -147,7 +217,7 @@ export class ExcelService {
         message: 'Excel subido correctamente.'
       }
     } catch (error) {
-      console.log(error)
+      console.log(error.message)
       throw new HttpException(
         error.response ?? 'Hubo un problema en el servidor, inténtelo más tarde.',
         error.status ?? HttpStatus.INTERNAL_SERVER_ERROR
