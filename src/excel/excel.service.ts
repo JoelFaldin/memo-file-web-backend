@@ -67,13 +67,6 @@ export class ExcelService {
           })
         }
       })
-
-      // await Promise.all([
-      //   updateRepresentants.length > 0 && updateRepresentants.map(async row => {
-      //     console.log('updating...');
-      //     await this.prisma.representantes.update(row);
-      //   })
-      // ])
       
       const batchesSize = 10000;
       for (let i = 0; i < createRepresentants.length; i += batchesSize) {
@@ -100,7 +93,7 @@ export class ExcelService {
       const mappedRepresentants = createdRepresentants.reduce((map, current) => {
         map[current.rut_representante] = current.representante_id;
         return map;
-      }, {})
+      }, {});
 
       // Procesando y guardando los locales:
       const allLocalRuts = data.map((row: RowInterface) => row.rut).filter(rut => Boolean(rut));
@@ -119,7 +112,7 @@ export class ExcelService {
           },
         });
 
-        results.push(...existingLocals)
+        results.push(...existingLocals);
       }
 
       const uniqueExistingLocalRuts = new Set(results.map(local => local.rut_local));
@@ -130,7 +123,7 @@ export class ExcelService {
           return
         } else {
           createLocals.push({
-            rut_local: row.rut ?? "",
+            rut_local: row.rut.toString() ?? "-",
             nombre_local: this.stringService.removeLastWhiteSpaces(row.nombre),
             id_representante: mappedRepresentants[row.rutRepresentante] ?? null
           });
@@ -142,11 +135,6 @@ export class ExcelService {
         data: specials,
         skipDuplicates: true
       });
-
-      // updateLocals.length > 0 && updateLocals.map(async row => {
-      //   console.log('updating...');
-      //   await this.prisma.locales.update(row);
-      // })
 
       for (let i = 0; i < createLocals.length; i += batchesSize) {
         const batch = createLocals.slice(i, i + batchesSize);
@@ -169,7 +157,7 @@ export class ExcelService {
           },
           memos: {
             id: id,
-            rut: row.rut,
+            rut: row.rut.toString() ?? "-",
             direccion: `${this.stringService.removeLastWhiteSpaces(row.calle.toString())} ${row?.numero ? row.numero : ''} ${row?.aclaratoria ? row.aclaratoria : ''}`,
             tipo: row.tipo,
             patente: row.patente,
@@ -183,27 +171,6 @@ export class ExcelService {
           }
         };
       }));
-
-      // const seen = new Set();
-      // const uniqueData = [];
-      // const duplicates = [];
-
-      // allMemos.forEach(memo => {
-      //   const { patente, periodo, rut, direccion } = memo.memos;
-      //   const key = `${rut}-${patente}-${periodo}-${direccion}`;
-
-      //   if (seen.has(key)) {
-      //     duplicates.push(memo.memos);
-      //     console.log(`Duplicate found: rut: ${rut}, patente: ${patente}, periodo: ${periodo}, direccion: ${direccion}`);
-      //   } else {
-      //     seen.add(key);
-      //     uniqueData.push(memo.memos);
-      //   }
-      // })
-
-      // if (duplicates.length > 0) {
-      //   console.log('Duplicate Entries:', duplicates);
-      // }
 
       await this.prisma.memos.createMany({
         data: allMemos.map(memo => memo.memos)
