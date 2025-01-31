@@ -8,44 +8,45 @@ datasource db {
 }
 
 model memos {
-  id             String          @id @db.VarChar(255)
-  rut            String?         @db.VarChar(255)
-  direccion      String          @db.VarChar(255)
-  tipo           String?         @db.VarChar(255)
-  patente        String?         @db.VarChar(255)
-  periodo        String?         @db.VarChar(255)
-  capital        Decimal?        @db.Decimal
-  afecto         Float?
-  total          Decimal?        @db.Decimal
-  emision        Int?
-  giro           String?         @db.VarChar(255)
-  agtp           String?         @db.VarChar(255)
-  pay_times      pay_times?
-  representantes representantes[]
+  id        String     @id @db.VarChar(255) @unique
+  direccion String     @db.VarChar(255)
+  tipo      String     @db.VarChar(255)
+  patente   String     @db.VarChar(255)
+  periodo   String     @db.VarChar(255)
+  capital   Decimal    @db.Decimal
+  afecto    Float
+  total     Decimal    @db.Decimal
+  emision   Int
+  giro      String     @db.VarChar(255)
+  agtp      String?    @db.VarChar(255)
+  
+  pay_times pay_times @relation(fields: [id], references: [memo_id])
+  locales   locales?
 }
 
 model pay_times {
   memo_id String @id @db.VarChar(255)
-  day     Int?
-  month   Int?
-  year    Int?
-  memos   memos  @relation(fields: [memo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  day     Int
+  month   Int
+  year    Int
+  memos   memos[]
 }
 
 model locales {
-  rut_local        String         @db.VarChar(255)
-  nombre_local     String         @db.VarChar(255)
-  id_representante String?        @db.VarChar(255)
+  rut_local        String          @db.VarChar(255)
+  nombre_local     String          @db.VarChar(255)
+  id_representante String?         @unique @db.VarChar(255)
+  id_memo          String          @unique @db.VarChar(255)
+
   representantes   representantes? @relation(fields: [id_representante], references: [representante_id], onDelete: NoAction, onUpdate: NoAction)
+  memos            memos           @relation(fields: [id_memo], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@id([rut_local, nombre_local])
 }
 
 model representantes {
-  representante_id     String    @id @db.VarChar(255)
-  patente              String    @db.VarChar(255)
+  representante_id     String    @id @unique @db.VarChar(255)
   rut_representante    String?   @db.VarChar(255)
   nombre_representante String?   @db.VarChar(255)
-  memos                memos[]
-  locales              locales[]
+  locales              locales?
 }

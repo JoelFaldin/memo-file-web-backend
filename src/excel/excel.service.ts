@@ -1,9 +1,12 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { PassThrough } from 'node:stream';
 import { randomUUID } from 'node:crypto';
+import { Response } from 'express';
 import * as XLSX from 'xlsx';
 
 import { StringsService } from 'src/strings/strings.service';
 import { PrismaService } from 'src/prisma.service';
+import { Decimal } from '@prisma/client/runtime/library';
 
 interface RowInterface {
   tipo: string;
@@ -23,6 +26,34 @@ interface RowInterface {
   agtp?: string
   rutRepresentante?: string,
   nombreRepresentante?: string
+}
+
+interface DatabaseInterface {
+  rut: string,
+  tipo: string,
+  patente: string,
+  direccion: string,
+  periodo: string,
+  capital: Decimal,
+  afecto: number,
+  total: Decimal,
+  emision: number,
+  pay_times: {
+    day: number,
+    month: number,
+    year: number
+  },
+  giro: string,
+  agtp: string,
+  representantes: Array<{
+    rut_representante: string,
+    nombre_representante: string,
+    locales: Array<{
+      rut_local: string,
+      nombre_local: string,
+      id_representante: string
+    }>
+  }>
 }
 
 @Injectable()
@@ -190,5 +221,75 @@ export class ExcelService {
         error.status ?? HttpStatus.INTERNAL_SERVER_ERROR
       )
     }
+  }
+
+  async downloadData(res: Response) {
+    const batchSize = 10000;
+    let hasMoreData = true;
+    let skip = 0;
+    const data = [];
+
+    const passStream = new PassThrough();
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="data.xlsx"');
+
+    const workbook = XLSX.utils.book_new();
+
+    while(hasMoreData) {
+      const batch = await this.prisma.memos.findMany({
+        skip,
+        take: batchSize,
+        include: {
+          pay_times: true,
+        },
+      });
+
+      console.log(batch[0]);
+
+      if (batch.length < batchSize) {
+        console.log(skip, batchSize);
+        hasMoreData = false;
+      }
+
+      // const flattenedData = batch.map((memo: DatabaseInterface) => {
+      //   const fechaDePago = memo.pay_times ? {
+      //     day: memo.pay_times.day,
+      //     month: memo.pay_times.month,
+      //     year: memo.pay_times.year,
+      //   } : { day: 0, month: 0, year: 0 };
+
+      //   return {
+      //     rut: memo.rut || '',
+      //     tipo: memo.tipo || '',
+      //     patente: memo.patente || '',
+      //     nombre: memo.representantes.length > 0 && memo.representantes[0].locales.length > 0 ? memo.representantes[0].locales[0].nombre_local : '',
+      //     direccion: memo.direccion || '',
+      //     periodo: memo.periodo || '',
+      //     capital: memo.capital ? parseFloat(memo.capital.toString()) : 0,
+      //     afecto: memo.afecto || 0,
+      //     total: memo.total ? parseFloat(memo.total.toString()) : 0,
+      //     emisiones: memo.emision || 0,
+      //     "fecha de pago": fechaDePago,
+      //     giro: memo.giro || '',
+      //     agtp: memo.agtp || '',
+      //     "rut representante": memo.representantes[0].rut_representante || '',
+      //     "nombre representante": memo.representantes[0].nombre_representante || '',
+      //   };      
+      // })
+
+      // const worksheet = XLSX.utils.json_to_sheet(flattenedData);
+      // XLSX.utils.book_append_sheet(workbook, worksheet, `Batch ${skip / batchSize + 1}`);
+
+      // const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
+      // passStream.write(buffer);
+
+      data.push(...batch);
+      skip += batchSize;
+    }
+
+    passStream.end();
+    passStream.pipe(res);
+
   }
 }
