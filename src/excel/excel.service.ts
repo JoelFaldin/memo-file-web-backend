@@ -6,7 +6,6 @@ import * as XLSX from 'xlsx';
 
 import { StringsService } from 'src/strings/strings.service';
 import { PrismaService } from 'src/prisma.service';
-import { Decimal } from '@prisma/client/runtime/library';
 
 interface RowInterface {
   tipo: string;
@@ -23,42 +22,45 @@ interface RowInterface {
   emision: number;
   fechaPago: string;
   giro: string;
-  agtp?: string
-  rutRepresentante?: string,
-  nombreRepresentante?: string
+  agtp?: string;
+  rutRepresentante?: string;
+  nombreRepresentante?: string;
 }
 
-interface DatabaseInterface {
-  rut: string,
-  tipo: string,
-  patente: string,
-  direccion: string,
-  periodo: string,
-  capital: Decimal,
-  afecto: number,
-  total: Decimal,
-  emision: number,
-  pay_times: {
-    day: number,
-    month: number,
-    year: number
-  },
-  giro: string,
-  agtp: string,
-  representantes: Array<{
-    rut_representante: string,
-    nombre_representante: string,
-    locales: Array<{
-      rut_local: string,
-      nombre_local: string,
-      id_representante: string
-    }>
-  }>
-}
+// interface DatabaseInterface {
+//   rut: string;
+//   tipo: string;
+//   patente: string;
+//   direccion: string;
+//   periodo: string;
+//   capital: Decimal;
+//   afecto: number;
+//   total: Decimal;
+//   emision: number;
+//   pay_times: {
+//     day: number;
+//     month: number;
+//     year: number;
+//   };
+//   giro: string;
+//   agtp: string;
+//   representantes: Array<{
+//     rut_representante: string;
+//     nombre_representante: string;
+//     locales: Array<{
+//       rut_local: string;
+//       nombre_local: string;
+//       id_representante: string;
+//     }>;
+//   }>;
+// }
 
 @Injectable()
 export class ExcelService {
-  constructor(private prisma: PrismaService, private stringService: StringsService) {}
+  constructor(
+    private prisma: PrismaService,
+    private stringService: StringsService,
+  ) {}
 
   async create(file: Express.Multer.File) {
     try {
@@ -71,19 +73,23 @@ export class ExcelService {
         return {
           patente: row.patente,
           rut: row.rutRepresentante,
-          nombre: row.nombreRepresentante
-        }
+          nombre: row.nombreRepresentante,
+        };
       });
 
       const existingRepresentants = await this.prisma.representantes.findMany({
         where: {
           rut_representante: {
-            in: allRepresentants.map(rep => rep.rut ?? "")
-          }
+            in: allRepresentants.map((rep) => rep.rut ?? ''),
+          },
         },
       });
 
-      const uniqueExistingRepresentants = new Set(existingRepresentants.map(representant => representant.rut_representante));
+      const uniqueExistingRepresentants = new Set(
+        existingRepresentants.map(
+          (representant) => representant.rut_representante,
+        ),
+      );
       const createRepresentants = [];
 
       data.forEach((row: RowInterface) => {
@@ -94,40 +100,47 @@ export class ExcelService {
             representante_id: randomUUID(),
             patente: row.patente,
             rut_representante: row.rutRepresentante,
-            nombre_representante: row.nombreRepresentante
-          })
+            nombre_representante: row.nombreRepresentante,
+          });
         }
-      })
-      
+      });
+
       const batchesSize = 10000;
       for (let i = 0; i < createRepresentants.length; i += batchesSize) {
         const batch = createRepresentants.slice(i, i + batchesSize);
         await this.prisma.representantes.createMany({
           data: batch,
-          skipDuplicates: true
+          skipDuplicates: true,
         });
-      };
+      }
 
       // Mapeando la id de cada representante creado junto a su rut:
       const createdRepresentants = await this.prisma.representantes.findMany({
         where: {
           rut_representante: {
-            in: data.map((row: RowInterface) => row.rutRepresentante).filter((rut): rut is string => !!rut),
-          }
+            in: data
+              .map((row: RowInterface) => row.rutRepresentante)
+              .filter((rut): rut is string => !!rut),
+          },
         },
         select: {
           representante_id: true,
-          rut_representante: true
-        }
+          rut_representante: true,
+        },
       });
 
-      const mappedRepresentants = createdRepresentants.reduce((map, current) => {
-        map[current.rut_representante] = current.representante_id;
-        return map;
-      }, {});
+      const mappedRepresentants = createdRepresentants.reduce(
+        (map, current) => {
+          map[current.rut_representante] = current.representante_id;
+          return map;
+        },
+        {},
+      );
 
       // Procesando y guardando los locales:
-      const allLocalRuts = data.map((row: RowInterface) => row.rut).filter(rut => Boolean(rut));
+      const allLocalRuts = data
+        .map((row: RowInterface) => row.rut)
+        .filter((rut) => Boolean(rut));
       const results = [];
       for (let i = 0; i < allLocalRuts.length; i += batchesSize) {
         const chunk = allLocalRuts.slice(i, i + batchesSize);
@@ -135,91 +148,100 @@ export class ExcelService {
         const existingLocals = await this.prisma.locales.findMany({
           where: {
             rut_local: {
-              in: Array.from(chunk.map(c => c.toString()))
+              in: Array.from(chunk.map((c) => c.toString())),
             },
           },
           select: {
-            rut_local: true
+            rut_local: true,
           },
         });
 
         results.push(...existingLocals);
       }
 
-      const uniqueExistingLocalRuts = new Set(results.map(local => local.rut_local));
+      const uniqueExistingLocalRuts = new Set(
+        results.map((local) => local.rut_local),
+      );
       const createLocals = [];
 
       data.forEach((row: RowInterface) => {
         if (uniqueExistingLocalRuts.has(row.rut)) {
-          return
+          return;
         } else {
           createLocals.push({
-            rut_local: row.rut.toString() ?? "-",
+            rut_local: row.rut.toString() ?? '-',
             nombre_local: this.stringService.removeLastWhiteSpaces(row.nombre),
-            id_representante: mappedRepresentants[row.rutRepresentante] ?? null
+            id_representante: mappedRepresentants[row.rutRepresentante] ?? null,
           });
         }
       });
 
-      const specials = createLocals.filter(local => local.rut_local === '-');
+      const specials = createLocals.filter((local) => local.rut_local === '-');
       await this.prisma.locales.createMany({
         data: specials,
-        skipDuplicates: true
+        skipDuplicates: true,
       });
 
       for (let i = 0; i < createLocals.length; i += batchesSize) {
         const batch = createLocals.slice(i, i + batchesSize);
         await this.prisma.locales.createMany({
           data: batch,
-          skipDuplicates: true
-        })
+          skipDuplicates: true,
+        });
       }
 
-      const allMemos = await Promise.all(data.map(async (row: RowInterface) => {
-        const { year, month, day } = this.stringService.separateDateNoDash(row.fechaPago);
-        const id = randomUUID();
+      const allMemos = await Promise.all(
+        data.map(async (row: RowInterface) => {
+          const { year, month, day } = this.stringService.separateDateNoDash(
+            row.fechaPago,
+          );
+          const id = randomUUID();
 
-        return {
-          payTime: {
-            memo_id: id,
-            year: parseInt(year.join("")),
-            month: parseInt(month.join("")),
-            day: parseInt(day.join(""))
-          },
-          memos: {
-            id: id,
-            rut: row.rut.toString() ?? "-",
-            direccion: `${this.stringService.removeLastWhiteSpaces(row.calle.toString())} ${row?.numero ? row.numero : ''} ${row?.aclaratoria ? row.aclaratoria : ''}`,
-            tipo: row.tipo,
-            patente: row.patente,
-            periodo: row.periodo,
-            capital: row.capital,
-            afecto: row.afecto,
-            total: row.total,
-            emision: row.emision,
-            giro: `${this.stringService.removeLastWhiteSpaces(row.giro.toString())}`,
-            agtp: row.agtp.toString()
-          }
-        };
-      }));
+          return {
+            payTime: {
+              memo_id: id,
+              year: parseInt(year.join('')),
+              month: parseInt(month.join('')),
+              day: parseInt(day.join('')),
+            },
+            memos: {
+              id: id,
+              rut: row.rut.toString() ?? '-',
+              direccion: `${this.stringService.removeLastWhiteSpaces(row.calle.toString())} ${row?.numero ? row.numero : ''} ${row?.aclaratoria ? row.aclaratoria : ''}`,
+              tipo: row.tipo,
+              patente: row.patente,
+              periodo: row.periodo,
+              capital: row.capital,
+              afecto: row.afecto,
+              total: row.total,
+              emision: row.emision,
+              giro: `${this.stringService.removeLastWhiteSpaces(row.giro.toString())}`,
+              agtp: row.agtp.toString(),
+              rut_local: row.rut,
+              nombre_local: row.nombre,
+            },
+          };
+        }),
+      );
 
       await this.prisma.memos.createMany({
-        data: allMemos.map(memo => memo.memos)
+        data: allMemos.map((memo) => memo.memos),
       });
 
       await this.prisma.pay_times.createMany({
-        data: allMemos.map(memo => memo.payTime)
+        data: allMemos.map((memo) => memo.payTime),
       });
 
       return {
-        message: 'Excel subido correctamente.'
-      }
+        message: 'Excel subido correctamente.',
+      };
     } catch (error) {
-      console.log(error.message)
+      console.log(error.message);
       throw new HttpException(
-        error.response ?? 'Hubo un problema en el servidor, inténtelo más tarde.',
-        error.status ?? HttpStatus.INTERNAL_SERVER_ERROR
-      )
+        error.response ??
+          'Hubo un problema en el servidor, inténtelo más tarde.',
+        error.status ?? HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -231,12 +253,15 @@ export class ExcelService {
 
     const passStream = new PassThrough();
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
     res.setHeader('Content-Disposition', 'attachment; filename="data.xlsx"');
 
-    const workbook = XLSX.utils.book_new();
+    // const workbook = XLSX.utils.book_new();
 
-    while(hasMoreData) {
+    while (hasMoreData) {
       const batch = await this.prisma.memos.findMany({
         skip,
         take: batchSize,
@@ -275,7 +300,7 @@ export class ExcelService {
       //     agtp: memo.agtp || '',
       //     "rut representante": memo.representantes[0].rut_representante || '',
       //     "nombre representante": memo.representantes[0].nombre_representante || '',
-      //   };      
+      //   };
       // })
 
       // const worksheet = XLSX.utils.json_to_sheet(flattenedData);
@@ -290,6 +315,5 @@ export class ExcelService {
 
     passStream.end();
     passStream.pipe(res);
-
   }
 }
