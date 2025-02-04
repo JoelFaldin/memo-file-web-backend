@@ -71,7 +71,6 @@ export class ExcelService {
       // Procesando y guardando los representantes:
       const allRepresentants = data.map((row: RowInterface) => {
         return {
-          patente: row.patente,
           rut: row.rutRepresentante,
           nombre: row.nombreRepresentante,
         };
@@ -93,7 +92,11 @@ export class ExcelService {
       const createRepresentants = [];
 
       data.forEach((row: RowInterface) => {
-        if (uniqueExistingRepresentants.has(row.rutRepresentante)) {
+        if (
+          uniqueExistingRepresentants.has(row.rutRepresentante) ||
+          !row.rutRepresentante ||
+          !row.nombreRepresentante
+        ) {
           return;
         } else if (row.rutRepresentante && row.nombreRepresentante) {
           createRepresentants.push({
@@ -120,7 +123,7 @@ export class ExcelService {
           rut_representante: {
             in: data
               .map((row: RowInterface) => row.rutRepresentante)
-              .filter((rut): rut is string => !!rut),
+              .filter((rut): rut is string => Boolean(rut)),
           },
         },
         select: {
@@ -142,6 +145,7 @@ export class ExcelService {
         .map((row: RowInterface) => row.rut)
         .filter((rut) => Boolean(rut));
       const results = [];
+
       for (let i = 0; i < allLocalRuts.length; i += batchesSize) {
         const chunk = allLocalRuts.slice(i, i + batchesSize);
 
@@ -169,8 +173,11 @@ export class ExcelService {
           return;
         } else {
           createLocals.push({
-            rut_local: row.rut.toString() ?? '-',
+            rut_local:
+              this.stringService.removeAnyWhiteSpaces(row.rut.toString()) ??
+              '-',
             nombre_local: this.stringService.removeLastWhiteSpaces(row.nombre),
+            patente: row.patente,
             id_representante: mappedRepresentants[row.rutRepresentante] ?? null,
           });
         }
@@ -184,53 +191,57 @@ export class ExcelService {
 
       for (let i = 0; i < createLocals.length; i += batchesSize) {
         const batch = createLocals.slice(i, i + batchesSize);
+
         await this.prisma.locales.createMany({
           data: batch,
           skipDuplicates: true,
         });
       }
 
-      const allMemos = await Promise.all(
-        data.map(async (row: RowInterface) => {
-          const { year, month, day } = this.stringService.separateDateNoDash(
-            row.fechaPago,
-          );
-          const id = randomUUID();
+      // Procesando y guardando los memos:
+      // const allMemos = data.map((row: RowInterface) => {
+      //   const id = randomUUID();
+      //   const { year, month, day } = this.stringService.separateDateNoDash(
+      //     row.fechaPago,
+      //   );
 
-          return {
-            payTime: {
-              memo_id: id,
-              year: parseInt(year.join('')),
-              month: parseInt(month.join('')),
-              day: parseInt(day.join('')),
-            },
-            memos: {
-              id: id,
-              rut: row.rut.toString() ?? '-',
-              direccion: `${this.stringService.removeLastWhiteSpaces(row.calle.toString())} ${row?.numero ? row.numero : ''} ${row?.aclaratoria ? row.aclaratoria : ''}`,
-              tipo: row.tipo,
-              patente: row.patente,
-              periodo: row.periodo,
-              capital: row.capital,
-              afecto: row.afecto,
-              total: row.total,
-              emision: row.emision,
-              giro: `${this.stringService.removeLastWhiteSpaces(row.giro.toString())}`,
-              agtp: row.agtp.toString(),
-              rut_local: row.rut,
-              nombre_local: row.nombre,
-            },
-          };
-        }),
-      );
+      //   return {
+      //     payTime: {
+      //       memo_id: id,
+      //       year: parseInt(year.join('')),
+      //       month: parseInt(month.join('')),
+      //       day: parseInt(day.join('')),
+      //     },
+      //     memos: {
+      //       id,
+      //       direccion: `${this.stringService.removeLastWhiteSpaces(row.calle.toString())} ${row?.numero ? row.numero : ''} ${row?.aclaratoria ? row.aclaratoria : ''}`,
+      //       tipo: row.tipo,
+      //       periodo: row.periodo,
+      //       capital: row.capital,
+      //       afecto: row.afecto,
+      //       total: row.total,
+      //       emision: row.emision,
+      //       giro: `${this.stringService.removeLastWhiteSpaces(row.giro.toString())}`,
+      //       agtp: row.agtp.toString(),
+      //       rut_local: row.rut,
+      //       nombre_local: this.stringService.removeLastWhiteSpaces(row.nombre),
+      //     },
+      //   };
+      // });
 
-      await this.prisma.memos.createMany({
-        data: allMemos.map((memo) => memo.memos),
-      });
+      // for (let i = 0; i < allMemos.length; i += batchesSize) {
+      //   const memoSlice = allMemos.slice(i, i + batchesSize);
 
-      await this.prisma.pay_times.createMany({
-        data: allMemos.map((memo) => memo.payTime),
-      });
+      //   await this.prisma.pay_times.createMany({
+      //     data: memoSlice.map((memo) => memo.payTime),
+      //     skipDuplicates: true,
+      //   });
+
+      //   await this.prisma.memos.createMany({
+      //     data: memoSlice.map((memo) => memo.memos),
+      //     skipDuplicates: true,
+      //   });
+      // }
 
       return {
         message: 'Excel subido correctamente.',

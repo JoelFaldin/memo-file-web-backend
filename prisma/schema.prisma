@@ -23,7 +23,7 @@ model memos {
   nombre_local     String    @db.VarChar(255)
   local            locales   @relation("MemoToLocales", fields: [rut_local, nombre_local], references: [rut_local, nombre_local])
 
-  pay_times        pay_times @relation(fields: [id], references: [memo_id])
+  pay_times        pay_times @relation("MemoPayTime", fields: [id], references: [memo_id])
 }
 
 model pay_times {
@@ -31,7 +31,7 @@ model pay_times {
   day     Int
   month   Int
   year    Int
-  memos   memos[]
+  memo   memos?  @relation("MemoPayTime")
 }
 
 model locales {
