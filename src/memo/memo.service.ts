@@ -3,24 +3,65 @@ import { randomUUID } from 'node:crypto';
 
 import { StringsService } from 'src/strings/strings.service';
 import { CreateMemoDto } from './dto/create-memo.dto';
-import { UpdateMemoDto } from './dto/update-memo.dto';
 import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
 export class MemoService {
-  constructor(private readonly prisma: PrismaService, private stringService: StringsService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private stringService: StringsService,
+  ) {}
 
   async createMemo(createMemoDto: CreateMemoDto) {
     try {
+      // Creando el representante si existe:
+      let id_representante: string | null = null;
+
+      if (
+        createMemoDto.rut_representante &&
+        createMemoDto.nombre_representante
+      ) {
+        const representant = {
+          representante_id: randomUUID(),
+          rut_representante: createMemoDto.rut_representante,
+          nombre_representante: createMemoDto.nombre_representante,
+          patente: createMemoDto.patente,
+        };
+
+        const newRepresentant = await this.prisma.representantes.create({
+          data: representant,
+        });
+
+        id_representante = newRepresentant.representante_id;
+      }
+
+      // Creando el local:
       const local = {
         rut_local: createMemoDto.rut,
         nombre_local: createMemoDto.nombre,
-      }
-  
-      const id = randomUUID()
+      };
+
+      await this.prisma.locales.upsert({
+        where: {
+          rut_local_nombre_local: {
+            rut_local: createMemoDto.rut,
+            nombre_local: createMemoDto.nombre,
+          },
+        },
+        update: {
+          nombre_local: createMemoDto.nombre,
+        },
+        create: {
+          rut_local: local.rut_local,
+          nombre_local: local.nombre_local,
+          id_representante: id_representante,
+        },
+      });
+
+      // Creando el memo:
+      const id = randomUUID();
       const memo = {
         id,
-        rut: createMemoDto.rut,
         direccion: `${this.stringService.removeLastWhiteSpaces(createMemoDto.calle)} ${createMemoDto.numero} ${createMemoDto?.aclaratoria}`,
         tipo: createMemoDto.tipo,
         patente: createMemoDto.patente,
@@ -30,39 +71,35 @@ export class MemoService {
         total: createMemoDto.total,
         emision: createMemoDto.emision,
         giro: createMemoDto.giro,
-        agtp: createMemoDto.agtp
-      }
-  
+        agtp: createMemoDto.agtp,
+        rut_local: createMemoDto.rut,
+        nombre_local: createMemoDto.nombre,
+      };
+
+      await this.prisma.memos.create({
+        data: memo,
+      });
+
       const date = createMemoDto.fechaPagos.toString();
       const { day, month, year } = this.stringService.separateDate(date);
-  
-      await this.prisma.locales.upsert({
-        where: { rut_local: createMemoDto.rut },
-        update: { nombre_local: createMemoDto.nombre },
-        create: local,
-      })
-  
-      await this.prisma.memos.create({
-        data: memo
-      })
-  
+
       await this.prisma.pay_times.create({
         data: {
           day,
           month,
           year,
-          memo_id: id
-        }
-      })
-  
+          memo_id: id,
+        },
+      });
+
       return {
-        message: 'Memorándum creado con éxito!'
-      }; 
+        message: 'Memorándum creado con éxito!',
+      };
     } catch (error) {
       throw new HttpException(
         error.response ?? 'Ha ocurrido un error, inténtelo más tarde.',
-        error.status ?? HttpStatus.INTERNAL_SERVER_ERROR
-      )
+        error.status ?? HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -85,19 +122,19 @@ export class MemoService {
           },
           {
             label: 'Locales únicos',
-            count: localsCount
+            count: localsCount,
           },
           {
             label: 'Representantes únicos',
-            count: representantsCount 
-          }
-        ]
-      }
+            count: representantsCount,
+          },
+        ],
+      };
     } catch (error) {
       throw new HttpException(
         error.response ?? 'Ha ocurrido un error, inténtelo más tarde.',
-        error.status ?? HttpStatus.INTERNAL_SERVER_ERROR
-      )
+        error.status ?? HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -106,59 +143,61 @@ export class MemoService {
       const findMemo = await this.prisma.memos.findMany({
         where: {
           patente: rol || undefined,
-          rut: rut || undefined,
           direccion: {
             contains: direction || undefined,
-            mode: 'insensitive'
-          }  
+            mode: 'insensitive',
+          },
         },
         include: {
           pay_times: true,
-          representantes: true
         },
         take: 10,
         skip: 10 * (page - 1),
-      })
+      });
 
       const memoCount = await this.prisma.memos.count({
         where: {
           patente: rol || undefined,
-          rut: rut || undefined,
           direccion: {
             contains: direction || undefined,
-            mode: 'insensitive'
-          }  
-        }
+            mode: 'insensitive',
+          },
+        },
       });
 
       if (findMemo.length === 0 && rol === '') {
-        throw new HttpException('No se ha encontrado ningún memo con los datos ingresados.', HttpStatus.BAD_REQUEST)
+        throw new HttpException(
+          'No se ha encontrado ningún memo con los datos ingresados.',
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
       const totalPages = Math.ceil(memoCount / 10);
 
-      return findMemo.length > 1 ? {
-        message: 'Memos encontrado!',
-        findMemo,
-        total: findMemo.length,
-        nextPage: ((page * 10) - memoCount) < 0,
-        totalPages
-      } : {
-        message: 'Memo encontrado!',
-        findMemo,
-        total: findMemo.length,
-        nextPage: false,
-        totalPages
-      }
+      return findMemo.length > 1
+        ? {
+            message: 'Memos encontrado!',
+            findMemo,
+            total: findMemo.length,
+            nextPage: page * 10 - memoCount < 0,
+            totalPages,
+          }
+        : {
+            message: 'Memo encontrado!',
+            findMemo,
+            total: findMemo.length,
+            nextPage: false,
+            totalPages,
+          };
     } catch (error) {
       throw new HttpException(
         error.response ?? 'Ha ocurrido un error, inténtelo más tarde.',
-        error.status ?? HttpStatus.INTERNAL_SERVER_ERROR
-      )
+        error.status ?? HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
-  update(id: number, updateMemoDto: UpdateMemoDto) {
+  update(id: number) {
     return `This action updates a #${id} memo`;
   }
 
