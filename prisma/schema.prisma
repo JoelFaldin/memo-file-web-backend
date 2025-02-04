@@ -11,7 +11,6 @@ model memos {
   id               String    @id @db.VarChar(255) @unique
   direccion        String    @db.VarChar(255)
   tipo             String    @db.VarChar(255)
-  patente          String    @db.VarChar(255)
   periodo          String    @db.VarChar(255)
   capital          Decimal   @db.Decimal
   afecto           Float
@@ -38,6 +37,7 @@ model pay_times {
 model locales {
   rut_local        String          @db.VarChar(255)
   nombre_local     String          @db.VarChar(255)
+  patente          String          @db.VarChar(255)
   id_representante String?         @unique @db.VarChar(255)
 
   representantes   representantes? @relation(fields: [id_representante], references: [representante_id], onDelete: NoAction, onUpdate: NoAction)

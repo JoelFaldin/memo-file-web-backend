@@ -52,6 +52,7 @@ export class MemoService {
           rut_local: local.rut_local,
           nombre_local: local.nombre_local,
           id_representante: id_representante,
+          patente: createMemoDto.patente,
         },
       });
 
@@ -73,7 +74,6 @@ export class MemoService {
         data: {
           direccion: `${this.stringService.removeLastWhiteSpaces(createMemoDto.calle)} ${createMemoDto.numero} ${createMemoDto?.aclaratoria}`,
           tipo: createMemoDto.tipo,
-          patente: createMemoDto.patente,
           periodo: createMemoDto.periodo,
           capital: createMemoDto.capital,
           afecto: createMemoDto.afecto,
@@ -147,10 +147,13 @@ export class MemoService {
     try {
       const findMemo = await this.prisma.memos.findMany({
         where: {
-          patente: rol || undefined,
+          rut_local: rut,
           direccion: {
             contains: direction || undefined,
             mode: 'insensitive',
+          },
+          local: {
+            patente: rol || undefined,
           },
         },
         include: {
@@ -162,10 +165,13 @@ export class MemoService {
 
       const memoCount = await this.prisma.memos.count({
         where: {
-          patente: rol || undefined,
+          rut_local: rut,
           direccion: {
             contains: direction || undefined,
             mode: 'insensitive',
+          },
+          local: {
+            patente: rol || null,
           },
         },
       });
