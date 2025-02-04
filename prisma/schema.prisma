@@ -8,20 +8,23 @@ datasource db {
 }
 
 model memos {
-  id        String     @id @db.VarChar(255) @unique
-  direccion String     @db.VarChar(255)
-  tipo      String     @db.VarChar(255)
-  patente   String     @db.VarChar(255)
-  periodo   String     @db.VarChar(255)
-  capital   Decimal    @db.Decimal
-  afecto    Float
-  total     Decimal    @db.Decimal
-  emision   Int
-  giro      String     @db.VarChar(255)
-  agtp      String?    @db.VarChar(255)
-  
-  pay_times pay_times @relation(fields: [id], references: [memo_id])
-  locales   locales?
+  id               String    @id @db.VarChar(255) @unique
+  direccion        String    @db.VarChar(255)
+  tipo             String    @db.VarChar(255)
+  patente          String    @db.VarChar(255)
+  periodo          String    @db.VarChar(255)
+  capital          Decimal   @db.Decimal
+  afecto           Float
+  total            Decimal   @db.Decimal
+  emision          Int
+  giro             String    @db.VarChar(255)
+  agtp             String?   @db.VarChar(255)
+
+  rut_local        String    @db.VarChar(255)
+  nombre_local     String    @db.VarChar(255)
+  local            locales   @relation("MemoToLocales", fields: [rut_local, nombre_local], references: [rut_local, nombre_local])
+
+  pay_times        pay_times @relation(fields: [id], references: [memo_id])
 }
 
 model pay_times {
@@ -36,10 +39,10 @@ model locales {
   rut_local        String          @db.VarChar(255)
   nombre_local     String          @db.VarChar(255)
   id_representante String?         @unique @db.VarChar(255)
-  id_memo          String          @unique @db.VarChar(255)
 
   representantes   representantes? @relation(fields: [id_representante], references: [representante_id], onDelete: NoAction, onUpdate: NoAction)
-  memos            memos           @relation(fields: [id_memo], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  memos            memos[]         @relation("MemoToLocales")
 
   @@id([rut_local, nombre_local])
 }
