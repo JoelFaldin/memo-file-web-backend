@@ -25,7 +25,6 @@ export class MemoService {
           representante_id: randomUUID(),
           rut_representante: createMemoDto.rut_representante,
           nombre_representante: createMemoDto.nombre_representante,
-          patente: createMemoDto.patente,
         };
 
         const newRepresentant = await this.prisma.representantes.create({
@@ -48,9 +47,7 @@ export class MemoService {
             nombre_local: createMemoDto.nombre,
           },
         },
-        update: {
-          nombre_local: createMemoDto.nombre,
-        },
+        update: {},
         create: {
           rut_local: local.rut_local,
           nombre_local: local.nombre_local,
@@ -58,28 +55,7 @@ export class MemoService {
         },
       });
 
-      // Creando el memo:
       const id = randomUUID();
-      const memo = {
-        id,
-        direccion: `${this.stringService.removeLastWhiteSpaces(createMemoDto.calle)} ${createMemoDto.numero} ${createMemoDto?.aclaratoria}`,
-        tipo: createMemoDto.tipo,
-        patente: createMemoDto.patente,
-        periodo: createMemoDto.periodo,
-        capital: createMemoDto.capital,
-        afecto: createMemoDto.afecto,
-        total: createMemoDto.total,
-        emision: createMemoDto.emision,
-        giro: createMemoDto.giro,
-        agtp: createMemoDto.agtp,
-        rut_local: createMemoDto.rut,
-        nombre_local: createMemoDto.nombre,
-      };
-
-      await this.prisma.memos.create({
-        data: memo,
-      });
-
       const date = createMemoDto.fechaPagos.toString();
       const { day, month, year } = this.stringService.separateDate(date);
 
@@ -89,6 +65,35 @@ export class MemoService {
           month,
           year,
           memo_id: id,
+        },
+      });
+
+      // Creando el memo:
+      await this.prisma.memos.create({
+        data: {
+          direccion: `${this.stringService.removeLastWhiteSpaces(createMemoDto.calle)} ${createMemoDto.numero} ${createMemoDto?.aclaratoria}`,
+          tipo: createMemoDto.tipo,
+          patente: createMemoDto.patente,
+          periodo: createMemoDto.periodo,
+          capital: createMemoDto.capital,
+          afecto: createMemoDto.afecto,
+          total: createMemoDto.total,
+          emision: createMemoDto.emision,
+          giro: createMemoDto.giro,
+          agtp: createMemoDto.agtp,
+          local: {
+            connect: {
+              rut_local_nombre_local: {
+                rut_local: createMemoDto.rut,
+                nombre_local: createMemoDto.nombre,
+              },
+            },
+          },
+          pay_times: {
+            connect: {
+              memo_id: id,
+            },
+          },
         },
       });
 
