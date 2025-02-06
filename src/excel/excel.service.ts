@@ -23,37 +23,9 @@ interface RowInterface {
   fechaPago: string;
   giro: string;
   agtp?: string;
-  rutRepresentante?: string;
-  nombreRepresentante?: string;
+  'Nombre representante'?: string;
+  'Rut representante'?: string;
 }
-
-// interface DatabaseInterface {
-//   rut: string;
-//   tipo: string;
-//   patente: string;
-//   direccion: string;
-//   periodo: string;
-//   capital: Decimal;
-//   afecto: number;
-//   total: Decimal;
-//   emision: number;
-//   pay_times: {
-//     day: number;
-//     month: number;
-//     year: number;
-//   };
-//   giro: string;
-//   agtp: string;
-//   representantes: Array<{
-//     rut_representante: string;
-//     nombre_representante: string;
-//     locales: Array<{
-//       rut_local: string;
-//       nombre_local: string;
-//       id_representante: string;
-//     }>;
-//   }>;
-// }
 
 @Injectable()
 export class ExcelService {
@@ -66,15 +38,13 @@ export class ExcelService {
     try {
       const workbook = XLSX.read(file.buffer, { type: 'buffer' });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json(worksheet);
-
-      console.log(data[data.length - 1]);
+      const data = XLSX.utils.sheet_to_json(worksheet, { defval: null });
 
       // Procesando y guardando los representantes:
       const allRepresentants = data.map((row: RowInterface) => {
         return {
-          rut: row.rutRepresentante,
-          nombre: row.nombreRepresentante,
+          rut: row['Rut representante'],
+          nombre: row['Nombre representante'],
         };
       });
 
@@ -95,16 +65,16 @@ export class ExcelService {
 
       data.forEach((row: RowInterface) => {
         if (
-          uniqueExistingRepresentants.has(row.rutRepresentante) ||
-          !row.rutRepresentante ||
-          !row.nombreRepresentante
+          uniqueExistingRepresentants.has(row['Rut representante']) ||
+          !row['Rut representante'] ||
+          !row['Nombre representante']
         ) {
           return;
-        } else if (row.rutRepresentante && row.nombreRepresentante) {
+        } else if (row['Rut representante'] || row['Nombre representante']) {
           createRepresentants.push({
             representante_id: randomUUID(),
-            rut_representante: row.rutRepresentante,
-            nombre_representante: row.nombreRepresentante,
+            rut_representante: row['Rut representante'],
+            nombre_representante: row['Nombre representante'],
           });
         }
       });
@@ -123,7 +93,7 @@ export class ExcelService {
         where: {
           rut_representante: {
             in: data
-              .map((row: RowInterface) => row.rutRepresentante)
+              .map((row: RowInterface) => row['Rut representante'])
               .filter((rut): rut is string => Boolean(rut)),
           },
         },
@@ -185,7 +155,8 @@ export class ExcelService {
             rut_local: sanitizedRut,
             nombre_local: this.stringService.removeLastWhiteSpaces(row.nombre),
             patente: row.patente,
-            id_representante: mappedRepresentants[row.rutRepresentante] ?? null,
+            id_representante:
+              mappedRepresentants[row['Rut representante']] ?? null,
           });
         }
       });
@@ -282,7 +253,7 @@ export class ExcelService {
         message: 'Excel subido correctamente.',
       };
     } catch (error) {
-      // console.log(error.message);
+      console.log(error.message);
       throw new HttpException(
         error.response ??
           'Hubo un problema en el servidor, inténtelo más tarde.',
