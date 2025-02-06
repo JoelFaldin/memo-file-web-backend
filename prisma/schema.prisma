@@ -35,21 +35,19 @@ model pay_times {
 
 model locales {
   local_id         String          @id @db.VarChar(255)
-  rut_local        String          @db.VarChar(255)
+  rut_local        String?         @db.VarChar(255)
   nombre_local     String          @db.VarChar(255)
-  patente          String          @db.VarChar(255)
-  id_representante String?         @unique @db.VarChar(255)
+  patente          String          @unique @db.VarChar(255)
+  id_representante String?         @db.VarChar(255)
 
-  representantes   representantes? @relation(fields: [id_representante], references: [representante_id], onDelete: NoAction, onUpdate: NoAction)
+  representantes   representantes? @relation("LocalesToRepresentants", fields: [id_representante], references: [representante_id], onDelete: NoAction, onUpdate: NoAction)
 
   memos            memos[]         @relation("MemoToLocales")
-
-  @@unique([rut_local, nombre_local, patente])
 }
 
 model representantes {
   representante_id     String    @id @unique @db.VarChar(255)
   rut_representante    String?   @db.VarChar(255)
   nombre_representante String?   @db.VarChar(255)
-  locales              locales?
+  locales              locales[] @relation("LocalesToRepresentants")
 }

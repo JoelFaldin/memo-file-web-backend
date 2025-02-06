@@ -42,11 +42,7 @@ export class MemoService {
 
       await this.prisma.locales.upsert({
         where: {
-          rut_local_nombre_local_patente: {
-            rut_local: createMemoDto.rut,
-            nombre_local: createMemoDto.nombre,
-            patente: createMemoDto.patente,
-          },
+          patente: createMemoDto.patente,
         },
         update: {},
         create: {
@@ -85,11 +81,7 @@ export class MemoService {
           agtp: createMemoDto.agtp,
           local: {
             connect: {
-              rut_local_nombre_local_patente: {
-                rut_local: createMemoDto.rut,
-                nombre_local: createMemoDto.nombre,
-                patente: createMemoDto.patente,
-              },
+              patente: createMemoDto.patente,
             },
           },
           pay_times: {

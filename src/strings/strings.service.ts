@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class StringsService {
   removeLastWhiteSpaces(dir: string | undefined): string {
-    if (dir === undefined) {
+    if (!dir) {
       return dir;
     }
 

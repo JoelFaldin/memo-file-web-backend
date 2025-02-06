@@ -68,6 +68,8 @@ export class ExcelService {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(worksheet);
 
+      console.log(data[data.length - 1]);
+
       // Procesando y guardando los representantes:
       const allRepresentants = data.map((row: RowInterface) => {
         return {
@@ -101,7 +103,6 @@ export class ExcelService {
         } else if (row.rutRepresentante && row.nombreRepresentante) {
           createRepresentants.push({
             representante_id: randomUUID(),
-            patente: row.patente,
             rut_representante: row.rutRepresentante,
             nombre_representante: row.nombreRepresentante,
           });
@@ -141,42 +142,47 @@ export class ExcelService {
       );
 
       // Procesando y guardando los locales:
-      const allLocalRuts = data
-        .map((row: RowInterface) => row.rut)
-        .filter((rut) => Boolean(rut));
+      const allLocalPatentes = Array.from(
+        new Set(data.map((row: RowInterface) => row.patente)),
+      );
       const results = [];
 
-      for (let i = 0; i < allLocalRuts.length; i += batchesSize) {
-        const chunk = allLocalRuts.slice(i, i + batchesSize);
+      for (let i = 0; i < allLocalPatentes.length; i += batchesSize) {
+        const chunk = allLocalPatentes.slice(i, i + batchesSize);
 
         const existingLocals = await this.prisma.locales.findMany({
           where: {
-            rut_local: {
-              in: Array.from(chunk.map((c) => c.toString())),
+            patente: {
+              in: Array.from(chunk.map((c) => c?.toString())),
             },
           },
           select: {
-            rut_local: true,
+            patente: true,
           },
         });
 
         results.push(...existingLocals);
       }
 
-      const uniqueExistingLocalRuts = new Set(
-        results.map((local) => local.rut_local),
+      const uniqueExistingLocalPatentes = new Set(
+        results.map((local) => local.patente),
       );
       const createLocals = [];
 
       data.forEach((row: RowInterface) => {
-        if (uniqueExistingLocalRuts.has(row.rut)) {
+        let sanitizedRut =
+          this.stringService.removeAnyWhiteSpaces(row.rut?.toString()) ?? '';
+
+        if (!sanitizedRut || sanitizedRut === '0') {
+          sanitizedRut = '-';
+        }
+
+        if (uniqueExistingLocalPatentes.has(row.patente)) {
           return;
         } else {
           createLocals.push({
             local_id: randomUUID(),
-            rut_local:
-              this.stringService.removeAnyWhiteSpaces(row.rut.toString()) ??
-              '-',
+            rut_local: sanitizedRut,
             nombre_local: this.stringService.removeLastWhiteSpaces(row.nombre),
             patente: row.patente,
             id_representante: mappedRepresentants[row.rutRepresentante] ?? null,
@@ -193,9 +199,18 @@ export class ExcelService {
 
       for (let i = 0; i < createLocals.length; i += batchesSize) {
         const batch = createLocals.slice(i, i + batchesSize);
+        const uniqueByPatente = [];
+        const seenPatentes = new Set();
+
+        for (const item of batch) {
+          if (!seenPatentes.has(item.patente)) {
+            uniqueByPatente.push(item);
+            seenPatentes.add(item.patente);
+          }
+        }
 
         await this.prisma.locales.createMany({
-          data: batch,
+          data: uniqueByPatente,
           skipDuplicates: true,
         });
       }
@@ -221,6 +236,7 @@ export class ExcelService {
       // Procesando y guardando los memos:
       const allMemos = data.map((row: RowInterface) => {
         const id = randomUUID();
+        const direction = `${this.stringService.removeLastWhiteSpaces(row.calle.toString())} ${row?.numero ? this.stringService.removeLastWhiteSpaces(row.numero.toString()) : ''} ${row?.aclaratoria ? this.stringService.removeLastWhiteSpaces(row.aclaratoria.toString()) : ''}`;
         const { year, month, day } = this.stringService.separateDateNoDash(
           row.fechaPago,
         );
@@ -234,15 +250,15 @@ export class ExcelService {
           },
           memos: {
             id,
-            direccion: `${this.stringService.removeLastWhiteSpaces(row.calle.toString())} ${row?.numero ? row.numero : ''} ${row?.aclaratoria ? row.aclaratoria : ''}`,
+            direccion: direction,
             tipo: row.tipo,
             periodo: row.periodo,
             capital: row.capital,
             afecto: row.afecto,
             total: row.total,
             emision: row.emision,
-            giro: `${this.stringService.removeLastWhiteSpaces(row.giro.toString())}`,
-            agtp: row.agtp.toString(),
+            giro: `${this.stringService.removeLastWhiteSpaces(row.giro?.toString())}`,
+            agtp: row.agtp?.toString(),
             local_id: mappedLocals[row.patente],
           },
         };
@@ -266,7 +282,7 @@ export class ExcelService {
         message: 'Excel subido correctamente.',
       };
     } catch (error) {
-      console.log(error.message);
+      // console.log(error.message);
       throw new HttpException(
         error.response ??
           'Hubo un problema en el servidor, inténtelo más tarde.',
