@@ -173,6 +173,7 @@ export class ExcelService {
           return;
         } else {
           createLocals.push({
+            local_id: randomUUID(),
             rut_local:
               this.stringService.removeAnyWhiteSpaces(row.rut.toString()) ??
               '-',
@@ -184,6 +185,7 @@ export class ExcelService {
       });
 
       const specials = createLocals.filter((local) => local.rut_local === '-');
+
       await this.prisma.locales.createMany({
         data: specials,
         skipDuplicates: true,
@@ -198,50 +200,67 @@ export class ExcelService {
         });
       }
 
+      // Mapeando la id de cada local con cada memo:
+      const createdLocals = await this.prisma.locales.findMany({
+        where: {
+          patente: {
+            in: data.map((row: RowInterface) => row.patente),
+          },
+        },
+        select: {
+          local_id: true,
+          patente: true,
+        },
+      });
+
+      const mappedLocals = createdLocals.reduce((map, current) => {
+        map[current.patente] = current.local_id;
+        return map;
+      }, {});
+
       // Procesando y guardando los memos:
-      // const allMemos = data.map((row: RowInterface) => {
-      //   const id = randomUUID();
-      //   const { year, month, day } = this.stringService.separateDateNoDash(
-      //     row.fechaPago,
-      //   );
+      const allMemos = data.map((row: RowInterface) => {
+        const id = randomUUID();
+        const { year, month, day } = this.stringService.separateDateNoDash(
+          row.fechaPago,
+        );
 
-      //   return {
-      //     payTime: {
-      //       memo_id: id,
-      //       year: parseInt(year.join('')),
-      //       month: parseInt(month.join('')),
-      //       day: parseInt(day.join('')),
-      //     },
-      //     memos: {
-      //       id,
-      //       direccion: `${this.stringService.removeLastWhiteSpaces(row.calle.toString())} ${row?.numero ? row.numero : ''} ${row?.aclaratoria ? row.aclaratoria : ''}`,
-      //       tipo: row.tipo,
-      //       periodo: row.periodo,
-      //       capital: row.capital,
-      //       afecto: row.afecto,
-      //       total: row.total,
-      //       emision: row.emision,
-      //       giro: `${this.stringService.removeLastWhiteSpaces(row.giro.toString())}`,
-      //       agtp: row.agtp.toString(),
-      //       rut_local: row.rut,
-      //       nombre_local: this.stringService.removeLastWhiteSpaces(row.nombre),
-      //     },
-      //   };
-      // });
+        return {
+          payTime: {
+            memo_id: id,
+            year: parseInt(year.join('')),
+            month: parseInt(month.join('')),
+            day: parseInt(day.join('')),
+          },
+          memos: {
+            id,
+            direccion: `${this.stringService.removeLastWhiteSpaces(row.calle.toString())} ${row?.numero ? row.numero : ''} ${row?.aclaratoria ? row.aclaratoria : ''}`,
+            tipo: row.tipo,
+            periodo: row.periodo,
+            capital: row.capital,
+            afecto: row.afecto,
+            total: row.total,
+            emision: row.emision,
+            giro: `${this.stringService.removeLastWhiteSpaces(row.giro.toString())}`,
+            agtp: row.agtp.toString(),
+            local_id: mappedLocals[row.patente],
+          },
+        };
+      });
 
-      // for (let i = 0; i < allMemos.length; i += batchesSize) {
-      //   const memoSlice = allMemos.slice(i, i + batchesSize);
+      for (let i = 0; i < allMemos.length; i += batchesSize) {
+        const memoSlice = allMemos.slice(i, i + batchesSize);
 
-      //   await this.prisma.pay_times.createMany({
-      //     data: memoSlice.map((memo) => memo.payTime),
-      //     skipDuplicates: true,
-      //   });
+        await this.prisma.pay_times.createMany({
+          data: memoSlice.map((memo) => memo.payTime),
+          skipDuplicates: true,
+        });
 
-      //   await this.prisma.memos.createMany({
-      //     data: memoSlice.map((memo) => memo.memos),
-      //     skipDuplicates: true,
-      //   });
-      // }
+        await this.prisma.memos.createMany({
+          data: memoSlice.map((memo) => memo.memos),
+          skipDuplicates: true,
+        });
+      }
 
       return {
         message: 'Excel subido correctamente.',

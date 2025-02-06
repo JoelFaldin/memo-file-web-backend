@@ -42,13 +42,15 @@ export class MemoService {
 
       await this.prisma.locales.upsert({
         where: {
-          rut_local_nombre_local: {
+          rut_local_nombre_local_patente: {
             rut_local: createMemoDto.rut,
             nombre_local: createMemoDto.nombre,
+            patente: createMemoDto.patente,
           },
         },
         update: {},
         create: {
+          local_id: randomUUID(),
           rut_local: local.rut_local,
           nombre_local: local.nombre_local,
           id_representante: id_representante,
@@ -83,9 +85,10 @@ export class MemoService {
           agtp: createMemoDto.agtp,
           local: {
             connect: {
-              rut_local_nombre_local: {
+              rut_local_nombre_local_patente: {
                 rut_local: createMemoDto.rut,
                 nombre_local: createMemoDto.nombre,
+                patente: createMemoDto.patente,
               },
             },
           },
@@ -147,13 +150,13 @@ export class MemoService {
     try {
       const findMemo = await this.prisma.memos.findMany({
         where: {
-          rut_local: rut,
           direccion: {
             contains: direction || undefined,
             mode: 'insensitive',
           },
           local: {
             patente: rol || undefined,
+            rut_local: rut || undefined,
           },
         },
         include: {
@@ -165,12 +168,12 @@ export class MemoService {
 
       const memoCount = await this.prisma.memos.count({
         where: {
-          rut_local: rut,
           direccion: {
             contains: direction || undefined,
             mode: 'insensitive',
           },
           local: {
+            rut_local: rut,
             patente: rol || null,
           },
         },
