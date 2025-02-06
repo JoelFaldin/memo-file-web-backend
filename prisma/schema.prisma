@@ -19,11 +19,10 @@ model memos {
   giro             String    @db.VarChar(255)
   agtp             String?   @db.VarChar(255)
 
-  rut_local        String    @db.VarChar(255)
-  nombre_local     String    @db.VarChar(255)
-  local            locales   @relation("MemoToLocales", fields: [rut_local, nombre_local], references: [rut_local, nombre_local])
+  local_id         String    @db.VarChar(255)
+  local            locales   @relation("MemoToLocales", fields: [local_id], references: [local_id])
 
-  pay_times        pay_times @relation(fields: [id], references: [memo_id])
+  pay_times        pay_times @relation("MemoPayTime", fields: [id], references: [memo_id])
 }
 
 model pay_times {
@@ -31,25 +30,24 @@ model pay_times {
   day     Int
   month   Int
   year    Int
-  memos   memos[]
+  memo   memos?  @relation("MemoPayTime")
 }
 
 model locales {
-  rut_local        String          @db.VarChar(255)
+  local_id         String          @id @db.VarChar(255)
+  rut_local        String?         @db.VarChar(255)
   nombre_local     String          @db.VarChar(255)
-  patente          String          @db.VarChar(255)
-  id_representante String?         @unique @db.VarChar(255)
+  patente          String          @unique @db.VarChar(255)
+  id_representante String?         @db.VarChar(255)
 
-  representantes   representantes? @relation(fields: [id_representante], references: [representante_id], onDelete: NoAction, onUpdate: NoAction)
+  representantes   representantes? @relation("LocalesToRepresentants", fields: [id_representante], references: [representante_id], onDelete: NoAction, onUpdate: NoAction)
 
   memos            memos[]         @relation("MemoToLocales")
-
-  @@id([rut_local, nombre_local])
 }
 
 model representantes {
   representante_id     String    @id @unique @db.VarChar(255)
   rut_representante    String?   @db.VarChar(255)
   nombre_representante String?   @db.VarChar(255)
-  locales              locales?
+  locales              locales[] @relation("LocalesToRepresentants")
 }

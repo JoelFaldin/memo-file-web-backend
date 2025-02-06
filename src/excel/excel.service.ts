@@ -23,37 +23,9 @@ interface RowInterface {
   fechaPago: string;
   giro: string;
   agtp?: string;
-  rutRepresentante?: string;
-  nombreRepresentante?: string;
+  'Nombre representante'?: string;
+  'Rut representante'?: string;
 }
-
-// interface DatabaseInterface {
-//   rut: string;
-//   tipo: string;
-//   patente: string;
-//   direccion: string;
-//   periodo: string;
-//   capital: Decimal;
-//   afecto: number;
-//   total: Decimal;
-//   emision: number;
-//   pay_times: {
-//     day: number;
-//     month: number;
-//     year: number;
-//   };
-//   giro: string;
-//   agtp: string;
-//   representantes: Array<{
-//     rut_representante: string;
-//     nombre_representante: string;
-//     locales: Array<{
-//       rut_local: string;
-//       nombre_local: string;
-//       id_representante: string;
-//     }>;
-//   }>;
-// }
 
 @Injectable()
 export class ExcelService {
@@ -66,14 +38,13 @@ export class ExcelService {
     try {
       const workbook = XLSX.read(file.buffer, { type: 'buffer' });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json(worksheet);
+      const data = XLSX.utils.sheet_to_json(worksheet, { defval: null });
 
       // Procesando y guardando los representantes:
       const allRepresentants = data.map((row: RowInterface) => {
         return {
-          patente: row.patente,
-          rut: row.rutRepresentante,
-          nombre: row.nombreRepresentante,
+          rut: row['Rut representante'],
+          nombre: row['Nombre representante'],
         };
       });
 
@@ -93,14 +64,17 @@ export class ExcelService {
       const createRepresentants = [];
 
       data.forEach((row: RowInterface) => {
-        if (uniqueExistingRepresentants.has(row.rutRepresentante)) {
+        if (
+          uniqueExistingRepresentants.has(row['Rut representante']) ||
+          !row['Rut representante'] ||
+          !row['Nombre representante']
+        ) {
           return;
-        } else if (row.rutRepresentante && row.nombreRepresentante) {
+        } else if (row['Rut representante'] || row['Nombre representante']) {
           createRepresentants.push({
             representante_id: randomUUID(),
-            patente: row.patente,
-            rut_representante: row.rutRepresentante,
-            nombre_representante: row.nombreRepresentante,
+            rut_representante: row['Rut representante'],
+            nombre_representante: row['Nombre representante'],
           });
         }
       });
@@ -119,8 +93,8 @@ export class ExcelService {
         where: {
           rut_representante: {
             in: data
-              .map((row: RowInterface) => row.rutRepresentante)
-              .filter((rut): rut is string => !!rut),
+              .map((row: RowInterface) => row['Rut representante'])
+              .filter((rut): rut is string => Boolean(rut)),
           },
         },
         select: {
@@ -138,45 +112,57 @@ export class ExcelService {
       );
 
       // Procesando y guardando los locales:
-      const allLocalRuts = data
-        .map((row: RowInterface) => row.rut)
-        .filter((rut) => Boolean(rut));
+      const allLocalPatentes = Array.from(
+        new Set(data.map((row: RowInterface) => row.patente)),
+      );
       const results = [];
-      for (let i = 0; i < allLocalRuts.length; i += batchesSize) {
-        const chunk = allLocalRuts.slice(i, i + batchesSize);
+
+      for (let i = 0; i < allLocalPatentes.length; i += batchesSize) {
+        const chunk = allLocalPatentes.slice(i, i + batchesSize);
 
         const existingLocals = await this.prisma.locales.findMany({
           where: {
-            rut_local: {
-              in: Array.from(chunk.map((c) => c.toString())),
+            patente: {
+              in: Array.from(chunk.map((c) => c?.toString())),
             },
           },
           select: {
-            rut_local: true,
+            patente: true,
           },
         });
 
         results.push(...existingLocals);
       }
 
-      const uniqueExistingLocalRuts = new Set(
-        results.map((local) => local.rut_local),
+      const uniqueExistingLocalPatentes = new Set(
+        results.map((local) => local.patente),
       );
       const createLocals = [];
 
       data.forEach((row: RowInterface) => {
-        if (uniqueExistingLocalRuts.has(row.rut)) {
+        let sanitizedRut =
+          this.stringService.removeAnyWhiteSpaces(row.rut?.toString()) ?? '';
+
+        if (!sanitizedRut || sanitizedRut === '0') {
+          sanitizedRut = '-';
+        }
+
+        if (uniqueExistingLocalPatentes.has(row.patente)) {
           return;
         } else {
           createLocals.push({
-            rut_local: row.rut.toString() ?? '-',
+            local_id: randomUUID(),
+            rut_local: sanitizedRut,
             nombre_local: this.stringService.removeLastWhiteSpaces(row.nombre),
-            id_representante: mappedRepresentants[row.rutRepresentante] ?? null,
+            patente: row.patente,
+            id_representante:
+              mappedRepresentants[row['Rut representante']] ?? null,
           });
         }
       });
 
       const specials = createLocals.filter((local) => local.rut_local === '-');
+
       await this.prisma.locales.createMany({
         data: specials,
         skipDuplicates: true,
@@ -184,53 +170,84 @@ export class ExcelService {
 
       for (let i = 0; i < createLocals.length; i += batchesSize) {
         const batch = createLocals.slice(i, i + batchesSize);
+        const uniqueByPatente = [];
+        const seenPatentes = new Set();
+
+        for (const item of batch) {
+          if (!seenPatentes.has(item.patente)) {
+            uniqueByPatente.push(item);
+            seenPatentes.add(item.patente);
+          }
+        }
+
         await this.prisma.locales.createMany({
-          data: batch,
+          data: uniqueByPatente,
           skipDuplicates: true,
         });
       }
 
-      const allMemos = await Promise.all(
-        data.map(async (row: RowInterface) => {
-          const { year, month, day } = this.stringService.separateDateNoDash(
-            row.fechaPago,
-          );
-          const id = randomUUID();
-
-          return {
-            payTime: {
-              memo_id: id,
-              year: parseInt(year.join('')),
-              month: parseInt(month.join('')),
-              day: parseInt(day.join('')),
-            },
-            memos: {
-              id: id,
-              rut: row.rut.toString() ?? '-',
-              direccion: `${this.stringService.removeLastWhiteSpaces(row.calle.toString())} ${row?.numero ? row.numero : ''} ${row?.aclaratoria ? row.aclaratoria : ''}`,
-              tipo: row.tipo,
-              patente: row.patente,
-              periodo: row.periodo,
-              capital: row.capital,
-              afecto: row.afecto,
-              total: row.total,
-              emision: row.emision,
-              giro: `${this.stringService.removeLastWhiteSpaces(row.giro.toString())}`,
-              agtp: row.agtp.toString(),
-              rut_local: row.rut,
-              nombre_local: row.nombre,
-            },
-          };
-        }),
-      );
-
-      await this.prisma.memos.createMany({
-        data: allMemos.map((memo) => memo.memos),
+      // Mapeando la id de cada local con cada memo:
+      const createdLocals = await this.prisma.locales.findMany({
+        where: {
+          patente: {
+            in: data.map((row: RowInterface) => row.patente),
+          },
+        },
+        select: {
+          local_id: true,
+          patente: true,
+        },
       });
 
-      await this.prisma.pay_times.createMany({
-        data: allMemos.map((memo) => memo.payTime),
+      const mappedLocals = createdLocals.reduce((map, current) => {
+        map[current.patente] = current.local_id;
+        return map;
+      }, {});
+
+      // Procesando y guardando los memos:
+      const allMemos = data.map((row: RowInterface) => {
+        const id = randomUUID();
+        const direction = `${this.stringService.removeLastWhiteSpaces(row.calle.toString())} ${row?.numero ? this.stringService.removeLastWhiteSpaces(row.numero.toString()) : ''} ${row?.aclaratoria ? this.stringService.removeLastWhiteSpaces(row.aclaratoria.toString()) : ''}`;
+        const { year, month, day } = this.stringService.separateDateNoDash(
+          row.fechaPago,
+        );
+
+        return {
+          payTime: {
+            memo_id: id,
+            year: parseInt(year.join('')),
+            month: parseInt(month.join('')),
+            day: parseInt(day.join('')),
+          },
+          memos: {
+            id,
+            direccion: direction,
+            tipo: row.tipo,
+            periodo: row.periodo,
+            capital: row.capital,
+            afecto: row.afecto,
+            total: row.total,
+            emision: row.emision,
+            giro: `${this.stringService.removeLastWhiteSpaces(row.giro?.toString())}`,
+            agtp: row.agtp?.toString(),
+            local_id: mappedLocals[row.patente],
+          },
+        };
       });
+
+      for (let i = 0; i < allMemos.length; i += batchesSize) {
+        const memoSlice = allMemos.slice(i, i + batchesSize);
+
+        await this.prisma.pay_times.createMany({
+          data: memoSlice.map((memo) => memo.payTime),
+          skipDuplicates: true,
+        });
+
+        await this.prisma.memos.createMany({
+          data: memoSlice.map((memo) => memo.memos),
+          skipDuplicates: true,
+        });
+      }
 
       return {
         message: 'Excel subido correctamente.',
