@@ -2,7 +2,6 @@ import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 
 import { CreateMemoDto } from './dto/create-memo.dto';
 import { MemoService } from './memo.service';
-import { UpdateMemoDto } from './dto/update-memo.dto';
 
 @Controller('memo')
 export class MemoController {
@@ -19,17 +18,29 @@ export class MemoController {
   }
 
   @Get('find')
-  findOne(@Query('rol') rol: string, @Query('rut') rut: string, @Query('direction') direction: string, @Query('page') page: number) {
+  findOne(
+    @Query('rol') rol: string,
+    @Query('rut') rut: string,
+    @Query('direction') direction: string,
+    @Query('page') page: number,
+  ) {
     return this.memoService.findMany(rol, rut, direction, page);
   }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateMemoDto: UpdateMemoDto) {
-  //   return this.memoService.update(+id, updateMemoDto);
-  // }
-
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.memoService.remove(+id);
-  // }
+  @Get('infinite')
+  fetchInfinite(
+    @Query('rol') rol: string,
+    @Query('rut') rut: string,
+    @Query('direction') direction: string,
+    @Query('pageparam') pageParam: number | boolean,
+    @Query('limit') limit: number,
+  ) {
+    return this.memoService.fetchInfinite(
+      rol,
+      rut,
+      direction,
+      pageParam,
+      limit,
+    );
+  }
 }

@@ -213,7 +213,6 @@ export class MemoService {
             totalPages,
           };
     } catch (error) {
-      console.log(error);
       throw new HttpException(
         error.response ?? 'Ha ocurrido un error, inténtelo más tarde.',
         error.status ?? HttpStatus.INTERNAL_SERVER_ERROR,
@@ -221,11 +220,90 @@ export class MemoService {
     }
   }
 
-  update(id: number) {
-    return `This action updates a #${id} memo`;
-  }
+  async fetchInfinite(
+    rol: string,
+    rut: string,
+    direction: string,
+    pageParam: number | boolean,
+    limit: number,
+  ) {
+    try {
+      const page = typeof pageParam === 'number' ? pageParam : 1;
 
-  remove(id: number) {
-    return `This action removes a #${id} memo`;
+      const findMemo = await this.prisma.memos.findMany({
+        where: {
+          direccion: {
+            contains: direction || undefined,
+            mode: 'insensitive',
+          },
+          local: {
+            patente: rol || undefined,
+            rut_local: rut || undefined,
+          },
+        },
+        include: {
+          pay_times: true,
+          local: {
+            select: {
+              rut_local: true,
+              nombre_local: true,
+              patente: true,
+              representantes: {
+                select: {
+                  nombre_representante: true,
+                  rut_representante: true,
+                },
+              },
+            },
+          },
+        },
+        take: parseInt(limit.toString()),
+        skip: parseInt(limit.toString()) * page,
+      });
+
+      if (findMemo.length === 0 && rol === '') {
+        throw new HttpException(
+          'No se ha encontrado ningún memo con los datos ingresados.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const memoCount = await this.prisma.memos.count({
+        where: {
+          direccion: {
+            contains: direction || undefined,
+            mode: 'insensitive',
+          },
+          local: {
+            rut_local: {
+              contains: rut || undefined,
+            },
+            patente: {
+              contains: rol || undefined,
+            },
+          },
+        },
+      });
+
+      const totalPages = Math.ceil(memoCount / 10);
+
+      return findMemo.length > 1
+        ? {
+            message: 'Memos encontrado!',
+            findMemo,
+            nextPage: page * 10 - memoCount < 0,
+            totalPages,
+          }
+        : {
+            message: 'Memo encontrado!',
+            findMemo,
+            nextPage: false,
+          };
+    } catch (error) {
+      throw new HttpException(
+        error.response ?? 'Ha ocurrido un error, inténtelo más tarde. D:',
+        error.status ?? HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }
