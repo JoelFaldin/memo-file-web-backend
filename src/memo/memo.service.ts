@@ -153,6 +153,19 @@ export class MemoService {
         },
         include: {
           pay_times: true,
+          local: {
+            select: {
+              rut_local: true,
+              nombre_local: true,
+              patente: true,
+              representantes: {
+                select: {
+                  nombre_representante: true,
+                  rut_representante: true,
+                },
+              },
+            },
+          },
         },
         take: 10,
         skip: 10 * (page - 1),
@@ -165,8 +178,12 @@ export class MemoService {
             mode: 'insensitive',
           },
           local: {
-            rut_local: rut,
-            patente: rol || null,
+            rut_local: {
+              contains: rut || undefined,
+            },
+            patente: {
+              contains: rol || undefined,
+            },
           },
         },
       });
@@ -196,6 +213,7 @@ export class MemoService {
             totalPages,
           };
     } catch (error) {
+      console.log(error);
       throw new HttpException(
         error.response ?? 'Ha ocurrido un error, inténtelo más tarde.',
         error.status ?? HttpStatus.INTERNAL_SERVER_ERROR,
