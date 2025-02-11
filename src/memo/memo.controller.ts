@@ -32,7 +32,7 @@ export class MemoController {
     @Query('rol') rol: string,
     @Query('rut') rut: string,
     @Query('direction') direction: string,
-    @Query('pageparam') pageParam: number | boolean,
+    @Query('pageparam') pageParam: string,
     @Query('limit') limit: number,
   ) {
     return this.memoService.fetchInfinite(
