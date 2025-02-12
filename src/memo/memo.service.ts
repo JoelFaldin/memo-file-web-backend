@@ -228,7 +228,7 @@ export class MemoService {
     limit: number,
   ) {
     try {
-      const page = pageParam != 'false' ? parseInt(pageParam) : 1;
+      const page = parseInt(pageParam);
 
       const findMemo = await this.prisma.memos.findMany({
         where: {
@@ -258,7 +258,7 @@ export class MemoService {
           },
         },
         take: parseInt(limit.toString()),
-        skip: parseInt(limit.toString()) * page,
+        skip: parseInt(limit.toString()) * (page + 1),
       });
 
       if (findMemo.length === 0 && rol === '') {
@@ -293,12 +293,13 @@ export class MemoService {
             findMemo,
             hasNextPage: page * 10 - memoCount < 0,
             totalPages,
-            page,
+            page: page + 1,
           }
         : {
             message: 'Memo encontrado!',
             findMemo,
             hasNextPage: false,
+            page: page + 1,
           };
     } catch (error) {
       throw new HttpException(
