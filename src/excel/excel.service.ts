@@ -4,28 +4,9 @@ import { randomUUID } from 'node:crypto';
 import { Response } from 'express';
 import * as XLSX from 'xlsx';
 
+import { RowInterface, DataInterface } from './interfaces/excel-data.interface';
 import { StringsService } from 'src/strings/strings.service';
 import { PrismaService } from 'src/prisma.service';
-
-interface RowInterface {
-  tipo: string;
-  patente: string;
-  rut: string;
-  nombre: string;
-  calle: string;
-  numero?: string;
-  aclaratoria?: string;
-  periodo: string;
-  capital: number;
-  afecto: number;
-  total: number;
-  emision: number;
-  fechaPago: string;
-  giro: string;
-  agtp?: string;
-  'nombreRepresentante'?: string;
-  'rutRepresentante'?: string;
-}
 
 @Injectable()
 export class ExcelService {
@@ -266,17 +247,9 @@ export class ExcelService {
     const batchSize = 10000;
     let hasMoreData = true;
     let skip = 0;
-    const data = [];
+    let data = [];
 
-    const passStream = new PassThrough();
-
-    res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    );
-    res.setHeader('Content-Disposition', 'attachment; filename="data.xlsx"');
-
-    // const workbook = XLSX.utils.book_new();
+    const workbook = XLSX.utils.book_new();
 
     while (hasMoreData) {
       const batch = await this.prisma.memos.findMany({
@@ -284,53 +257,59 @@ export class ExcelService {
         take: batchSize,
         include: {
           pay_times: true,
+          local: {
+            select: {
+              representantes: true,
+              patente: true,
+              nombre_local: true,
+              rut_local: true
+            }
+          }
         },
       });
 
-      console.log(batch[0]);
+      if (batch.length === 0) break;
 
-      if (batch.length < batchSize) {
-        console.log(skip, batchSize);
-        hasMoreData = false;
+      const formattedData = batch.map((row) => ({
+        "tipo": row.tipo,
+        "patente": row.local.patente,
+        "rut": row.local.rut_local,
+        "nombre": row.local.nombre_local,
+        "dirección": row.direccion,
+        "periodo": row.periodo,
+        "capital": Number(row.capital),
+        "afecto": row.afecto,
+        "total": Number(row.total),
+        "emisión": row.emision,
+        "fecha de pago": `${row.pay_times.year}${row.pay_times.month}${row.pay_times.day}`,
+        "giro": row.giro,
+        "agtp": row.agtp,
+        "rut representante": row.local?.representantes?.rut_representante || '',
+        "nombre representante": row.local?.representantes?.nombre_representante || '',
+      }));
+
+      data.push(...formattedData);
+
+      let worksheet;
+      if (skip === 0) {
+        worksheet = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Memorándums');
+      } else {
+        worksheet = workbook.Sheets['Memorándums'];
+        XLSX.utils.sheet_add_json(worksheet, data, { skipHeader: true, origin: -1 })
       }
 
-      // const flattenedData = batch.map((memo: DatabaseInterface) => {
-      //   const fechaDePago = memo.pay_times ? {
-      //     day: memo.pay_times.day,
-      //     month: memo.pay_times.month,
-      //     year: memo.pay_times.year,
-      //   } : { day: 0, month: 0, year: 0 };
-
-      //   return {
-      //     rut: memo.rut || '',
-      //     tipo: memo.tipo || '',
-      //     patente: memo.patente || '',
-      //     nombre: memo.representantes.length > 0 && memo.representantes[0].locales.length > 0 ? memo.representantes[0].locales[0].nombre_local : '',
-      //     direccion: memo.direccion || '',
-      //     periodo: memo.periodo || '',
-      //     capital: memo.capital ? parseFloat(memo.capital.toString()) : 0,
-      //     afecto: memo.afecto || 0,
-      //     total: memo.total ? parseFloat(memo.total.toString()) : 0,
-      //     emisiones: memo.emision || 0,
-      //     "fecha de pago": fechaDePago,
-      //     giro: memo.giro || '',
-      //     agtp: memo.agtp || '',
-      //     "rutRepresentante": memo.representantes[0].rut_representante || '',
-      //     "nombreRepresentante": memo.representantes[0].nombre_representante || '',
-      //   };
-      // })
-
-      // const worksheet = XLSX.utils.json_to_sheet(flattenedData);
-      // XLSX.utils.book_append_sheet(workbook, worksheet, `Batch ${skip / batchSize + 1}`);
-
-      // const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
-      // passStream.write(buffer);
-
-      data.push(...batch);
+      data = [];
       skip += batchSize;
     }
 
-    passStream.end();
-    passStream.pipe(res);
+    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader('Content-Disposition', 'attachment; filename="data.xlsx"');
+    res.send(excelBuffer);
   }
 }
