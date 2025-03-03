@@ -23,8 +23,8 @@ interface RowInterface {
   fechaPago: string;
   giro: string;
   agtp?: string;
-  'Nombre representante'?: string;
-  'Rut representante'?: string;
+  'nombreRepresentante'?: string;
+  'rutRepresentante'?: string;
 }
 
 @Injectable()
@@ -43,8 +43,8 @@ export class ExcelService {
       // Procesando y guardando los representantes:
       const allRepresentants = data.map((row: RowInterface) => {
         return {
-          rut: row['Rut representante'],
-          nombre: row['Nombre representante'],
+          rut: row['rutRepresentante'],
+          nombre: row['nombreRepresentante'],
         };
       });
 
@@ -65,16 +65,16 @@ export class ExcelService {
 
       data.forEach((row: RowInterface) => {
         if (
-          uniqueExistingRepresentants.has(row['Rut representante']) ||
-          !row['Rut representante'] ||
-          !row['Nombre representante']
+          uniqueExistingRepresentants.has(row['rutRepresentante']) ||
+          !row['rutRepresentante'] ||
+          !row['nombreRepresentante']
         ) {
           return;
-        } else if (row['Rut representante'] || row['Nombre representante']) {
+        } else if (row['rutRepresentante'] || row['nombreRepresentante']) {
           createRepresentants.push({
             representante_id: randomUUID(),
-            rut_representante: row['Rut representante'],
-            nombre_representante: row['Nombre representante'],
+            rut_representante: row['rutRepresentante'],
+            nombre_representante: row['nombreRepresentante'],
           });
         }
       });
@@ -93,7 +93,7 @@ export class ExcelService {
         where: {
           rut_representante: {
             in: data
-              .map((row: RowInterface) => row['Rut representante'])
+              .map((row: RowInterface) => row['rutRepresentante'])
               .filter((rut): rut is string => Boolean(rut)),
           },
         },
@@ -156,7 +156,7 @@ export class ExcelService {
             nombre_local: this.stringService.removeLastWhiteSpaces(row.nombre),
             patente: row.patente,
             id_representante:
-              mappedRepresentants[row['Rut representante']] ?? null,
+              mappedRepresentants[row['rutRepresentante']] ?? null,
           });
         }
       });
@@ -315,8 +315,8 @@ export class ExcelService {
       //     "fecha de pago": fechaDePago,
       //     giro: memo.giro || '',
       //     agtp: memo.agtp || '',
-      //     "rut representante": memo.representantes[0].rut_representante || '',
-      //     "nombre representante": memo.representantes[0].nombre_representante || '',
+      //     "rutRepresentante": memo.representantes[0].rut_representante || '',
+      //     "nombreRepresentante": memo.representantes[0].nombre_representante || '',
       //   };
       // })
 
