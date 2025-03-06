@@ -1,9 +1,8 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Response } from 'express';
-import * as XLSX from 'xlsx';
 
-import { read, write } from 'xlsx';
+import { read, write, utils } from 'xlsx';
 
 import { RowInterface } from './interfaces/excel-data.interface';
 import { StringsService } from 'src/strings/strings.service';
@@ -20,7 +19,7 @@ export class ExcelService {
     try {
       const workbook = read(file.buffer, { type: 'buffer' });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json(worksheet, { defval: null });
+      const data = utils.sheet_to_json(worksheet, { defval: null });
 
       // Procesando y guardando los representantes:
       const allRepresentants = data.map((row: RowInterface) => {
@@ -250,7 +249,7 @@ export class ExcelService {
     let skip = 0;
     let data = [];
 
-    const workbook = XLSX.utils.book_new();
+    const workbook = utils.book_new();
 
     while (hasMoreData) {
       const batch = await this.prisma.memos.findMany({
@@ -293,11 +292,11 @@ export class ExcelService {
 
       let worksheet;
       if (skip === 0) {
-        worksheet = XLSX.utils.json_to_sheet(data);
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Memorándums');
+        worksheet = utils.json_to_sheet(data);
+        utils.book_append_sheet(workbook, worksheet, 'Memorándums');
       } else {
         worksheet = workbook.Sheets['Memorándums'];
-        XLSX.utils.sheet_add_json(worksheet, data, { skipHeader: true, origin: -1 })
+        utils.sheet_add_json(worksheet, data, { skipHeader: true, origin: -1 })
       }
 
       data = [];
