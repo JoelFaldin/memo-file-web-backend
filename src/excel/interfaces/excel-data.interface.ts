@@ -17,35 +17,3 @@ export interface RowInterface {
   'nombreRepresentante'?: string;
   'rutRepresentante'?: string;
 }
-
-interface representantes {
-  representante_id: string;
-  rut_representante: string;
-  nombre_representante: string;
-}
-
-export interface DataInterface {
-  id: string;
-  direccion: string;
-  tipo: string;
-  periodo: string;
-  capital: number;
-  afecto: number;
-  total: string;
-  emision: number;
-  giro: string;
-  agtp: string;
-  local_id: string;
-  pay_times: {
-    memo_id: string;
-    day: number;
-    month: number;
-    year: number;
-  },
-  local: {
-    representantes?: representantes;
-    patente: string;
-    nombre_local: string;
-    rut_local: string;
-  };
-}

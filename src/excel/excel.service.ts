@@ -1,10 +1,11 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { PassThrough } from 'node:stream';
 import { randomUUID } from 'node:crypto';
 import { Response } from 'express';
 import * as XLSX from 'xlsx';
 
-import { RowInterface, DataInterface } from './interfaces/excel-data.interface';
+import { read, write } from 'xlsx';
+
+import { RowInterface } from './interfaces/excel-data.interface';
 import { StringsService } from 'src/strings/strings.service';
 import { PrismaService } from 'src/prisma.service';
 
@@ -17,7 +18,7 @@ export class ExcelService {
 
   async create(file: Express.Multer.File) {
     try {
-      const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+      const workbook = read(file.buffer, { type: 'buffer' });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(worksheet, { defval: null });
 
@@ -303,7 +304,7 @@ export class ExcelService {
       skip += batchSize;
     }
 
-    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    const excelBuffer = write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
     res.setHeader(
       'Content-Type',
