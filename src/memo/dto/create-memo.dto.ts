@@ -37,7 +37,7 @@ export class CreateMemoDto {
   @IsNotEmpty({
     message: 'Debes ingresar el nombre de la persona que paga la patente!',
   })
-  nombre: string;
+  name: string;
 
   @IsString()
   @IsNotEmpty({

@@ -37,7 +37,7 @@ export class MemoService {
       // Creando el local:
       const local = {
         rut_local: createMemoDto.rut,
-        nombre_local: createMemoDto.nombre,
+        nombre_local: createMemoDto.name,
       };
 
       await this.prisma.locales.upsert({
